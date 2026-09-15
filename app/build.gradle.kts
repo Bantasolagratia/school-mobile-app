@@ -10,6 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.sch.sekolah_mobile_app"
         minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
