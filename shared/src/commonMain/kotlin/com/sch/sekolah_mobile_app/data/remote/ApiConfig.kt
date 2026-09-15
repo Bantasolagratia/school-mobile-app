@@ -4,6 +4,8 @@ import com.sch.sekolah_mobile_app.data.storage.getDefaultServerHost
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 
 object ApiConfig {
+    const val AUTH_PORT = 8000
+    const val API_PORT = 8080
     const val GATEWAY_PORT = 5173
 
     private const val KEY_CUSTOM_HOST = "custom_server_host"
@@ -43,4 +45,3 @@ object ApiConfig {
     fun getGuruUrl(): String =
         "${getBaseUrl()}/api/management/guru"
 }
-
