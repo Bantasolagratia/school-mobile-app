@@ -10,6 +10,8 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(17)
+
     androidTarget {
         @OptIn(ExperimentalKotlinGradlePluginApi::class)
         compilerOptions {
@@ -67,7 +69,6 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 24
         minSdk = 26
     }
 
