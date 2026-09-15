@@ -52,6 +52,14 @@ fun ExamTakingScreen(
         showBackBlockedDialog = true
     }
 
+    // Fasilitas 7.1 & 7.2: Kiosk Lock & App Switching Violation Detection
+    var violationCount by remember { mutableStateOf(0) }
+    var showViolationDialog by remember { mutableStateOf(false) }
+    var isSecurityLockedByViolation by remember { mutableStateOf(false) }
+    var violationKeyInput by remember { mutableStateOf("") }
+    var isVerifyingViolationKey by remember { mutableStateOf(false) }
+    var violationKeyError by remember { mutableStateOf<String?>(null) }
+
     // Exam Questions & State
     var questions by remember { mutableStateOf<List<UjianQuestionMobile>>(emptyList()) }
     var currentIndex by remember { mutableStateOf(0) }
@@ -67,6 +75,23 @@ fun ExamTakingScreen(
     var emergencyKeyInput by remember { mutableStateOf("") }
     var isVerifyingKey by remember { mutableStateOf(false) }
     var emergencyKeyError by remember { mutableStateOf<String?>(null) }
+
+    ExamKioskEffect(enabled = !isKickedBySupervisor) { _ ->
+        violationCount++
+        showViolationDialog = true
+        if (violationCount >= 2) {
+            isSecurityLockedByViolation = true
+        }
+        coroutineScope.launch {
+            try {
+                ujianRepository.sendHeartbeat(
+                    scheduleId = exam.id,
+                    status = if (violationCount >= 2) "TERKUNCI" else "MENGERJAKAN",
+                    keterangan = "Terdeteksi mencoba berpindah aplikasi / minimize (Pelanggaran ke-$violationCount)"
+                )
+            } catch (_: Exception) {}
+        }
+    }
 
     // Finish Exam Dialog
     var showFinishConfirmation by remember { mutableStateOf(false) }
@@ -687,6 +712,7 @@ fun ExamTakingScreen(
                                     isVerifyingKey = false
                                     if (resp.valid) {
                                         showEmergencyDialog = false
+                                        releaseExamKiosk()
                                         onEmergencyExit()
                                     } else {
                                         emergencyKeyError = resp.message ?: "Key Keluar tidak sesuai atau tidak valid."
@@ -751,7 +777,10 @@ fun ExamTakingScreen(
                 },
                 confirmButton = {
                     Button(
-                        onClick = onKickedBySupervisor,
+                        onClick = {
+                            releaseExamKiosk()
+                            onKickedBySupervisor()
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
                     ) {
                         Text("Keluar ke Login")
@@ -794,6 +823,7 @@ fun ExamTakingScreen(
                                         keterangan = "Ujian selesai dikumpulkan oleh murid"
                                     )
                                 } catch (_: Exception) {}
+                                releaseExamKiosk()
                                 onExamSubmitted()
                             }
                         },
@@ -805,6 +835,196 @@ fun ExamTakingScreen(
                 dismissButton = {
                     TextButton(onClick = { showFinishConfirmation = false }) {
                         Text("Periksa Lagi")
+                    }
+                }
+            )
+        }
+
+        // 5. Peringatan Pelanggaran Berpindah Aplikasi (Fasilitas 7.2)
+        if (showViolationDialog && !isSecurityLockedByViolation) {
+            AlertDialog(
+                onDismissRequest = { showViolationDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD97706),
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "⚠️ Peringatan Keamanan Ujian!",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB45309),
+                        fontSize = 17.sp
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Sistem mendeteksi percobaan keluar / meminimalkan layar ujian (Pelanggaran #$violationCount).",
+                            fontWeight = FontWeight.SemiBold,
+                            color = DarkNavy,
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Selama ujian berlangsung, Anda dilarang keras membuka aplikasi lain, jendela mengambang, maupun panel notifikasi. Percobaan ini telah dilaporkan ke dashboard Guru Pengawas.",
+                            fontSize = 12.sp,
+                            color = SlateGray,
+                            lineHeight = 17.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "PENTING: Jika terdeteksi berpindah aplikasi sekali lagi, modul ujian akan DIBEKUKAN / TERKUNCI TOTAL!",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showViolationDialog = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
+                    ) {
+                        Text("Saya Mengerti & Lanjutkan Ujian")
+                    }
+                }
+            )
+        }
+
+        // 6. Ujian Terkunci Total Karena Pelanggaran Berulang (Fasilitas 7.2 & 7.3)
+        if (isSecurityLockedByViolation) {
+            AlertDialog(
+                onDismissRequest = {}, // Non-dismissible
+                icon = {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFFDC2626),
+                        modifier = Modifier.size(44.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "🚨 UJIAN DIBEKUKAN!",
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFDC2626),
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Aplikasi mendeteksi perpindahan aplikasi berulang kali ($violationCount kali). Akses pengerjaan soal telah dikunci demi integritas ujian.",
+                            fontSize = 13.sp,
+                            color = DarkNavy,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Silakan panggil Guru Pengawas di ruangan untuk memasukkan Kunci Keluar Darurat (Key Pengawas 6-digit) agar modul ujian dapat dibuka kembali.",
+                            fontSize = 12.sp,
+                            color = SlateGray,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 16.sp
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = violationKeyInput,
+                            onValueChange = {
+                                if (it.length <= 6) violationKeyInput = it
+                                violationKeyError = null
+                            },
+                            label = { Text("Key Pengawas (6-digit)") },
+                            placeholder = { Text("Contoh: 495713") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            isError = violationKeyError != null,
+                            supportingText = violationKeyError?.let { { Text(it, color = Color(0xFFDC2626)) } },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                isVerifyingViolationKey = true
+                                violationKeyError = null
+                                try {
+                                    val resp = ujianRepository.verifyEmergencyExitKey(
+                                        scheduleId = exam.id ?: "",
+                                        kelas = studentKelas,
+                                        key = violationKeyInput.trim()
+                                    )
+                                    isVerifyingViolationKey = false
+                                    if (resp.valid) {
+                                        // Reset violation dan pulihkan akses ujian
+                                        isSecurityLockedByViolation = false
+                                        violationCount = 0
+                                        showViolationDialog = false
+                                        violationKeyInput = ""
+                                        try {
+                                            ujianRepository.sendHeartbeat(
+                                                scheduleId = exam.id,
+                                                status = "MENGERJAKAN",
+                                                keterangan = "Kunci ujian dibuka kembali oleh Pengawas"
+                                            )
+                                        } catch (_: Exception) {}
+                                    } else {
+                                        violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
+                                    }
+                                } catch (e: Exception) {
+                                    isVerifyingViolationKey = false
+                                    violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
+                                }
+                            }
+                        },
+                        enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                    ) {
+                        if (isVerifyingViolationKey) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        } else {
+                            Text("Buka Kunci Ujian")
+                        }
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                isVerifyingViolationKey = true
+                                violationKeyError = null
+                                try {
+                                    val resp = ujianRepository.verifyEmergencyExitKey(
+                                        scheduleId = exam.id ?: "",
+                                        kelas = studentKelas,
+                                        key = violationKeyInput.trim()
+                                    )
+                                    isVerifyingViolationKey = false
+                                    if (resp.valid) {
+                                        releaseExamKiosk()
+                                        onEmergencyExit()
+                                    } else {
+                                        violationKeyError = resp.message ?: "Key Pengawas salah untuk keluar darurat."
+                                    }
+                                } catch (e: Exception) {
+                                    isVerifyingViolationKey = false
+                                    violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
+                                }
+                            }
+                        },
+                        enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
+                    ) {
+                        Text("Keluar Darurat")
                     }
                 }
             )

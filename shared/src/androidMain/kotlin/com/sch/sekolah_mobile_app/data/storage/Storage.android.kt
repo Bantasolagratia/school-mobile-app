@@ -7,10 +7,20 @@ import android.content.SharedPreferences
 
 object AndroidPlatformContext {
     private var appContext: Context? = null
+    private var currentActivity: java.lang.ref.WeakReference<android.app.Activity>? = null
 
     fun init(context: Context) {
         appContext = context.applicationContext
+        if (context is android.app.Activity) {
+            currentActivity = java.lang.ref.WeakReference(context)
+        }
     }
+
+    fun setActivity(activity: android.app.Activity) {
+        currentActivity = java.lang.ref.WeakReference(activity)
+    }
+
+    fun getActivity(): android.app.Activity? = currentActivity?.get()
 
     fun get(): Context = appContext ?: throw IllegalStateException("AndroidPlatformContext not initialized")
 }

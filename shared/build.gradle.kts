@@ -56,6 +56,7 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.lifecycle.runtime.ktx)
             implementation(libs.ktor.client.okhttp)
         }
 

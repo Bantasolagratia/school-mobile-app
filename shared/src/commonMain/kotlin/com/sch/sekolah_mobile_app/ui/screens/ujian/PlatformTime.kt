@@ -5,3 +5,4 @@ package com.sch.sekolah_mobile_app.ui.screens.ujian
  * Returns Pair(date: "yyyy-MM-dd", time: "HH:mm")
  */
 expect fun getCurrentWibDateTime(): Pair<String, String>
+
