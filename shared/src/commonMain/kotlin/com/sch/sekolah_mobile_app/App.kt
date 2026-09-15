@@ -27,7 +27,6 @@ import com.sch.sekolah_mobile_app.ui.theme.SekolahMobileTheme
 
 enum class ScreenState {
     LOGIN,
-    MAIN
     MAIN,
     EXAM_TAKING
 }
@@ -106,8 +105,6 @@ fun App() {
                 }
 
                 ScreenState.MAIN -> {
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val isTabletOrWide = maxWidth >= 600.dp
                     if (currentSubScreen == SubScreen.UJIAN_LIST) {
                         UjianMuridScreen(
                             ujianRepository = ujianRepository,
@@ -122,64 +119,20 @@ fun App() {
                         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                             val isTabletOrWide = maxWidth >= 600.dp
 
-                        if (isTabletOrWide) {
-                            // Tablet & iPad Responsive Layout: NavigationRail on the left
-                            Row(modifier = Modifier.fillMaxSize()) {
-                                NavigationRail(
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                    contentColor = PrimaryTeal
-                                ) {
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    NavigationTab.entries.forEach { tab ->
-                                        NavigationRailItem(
-                                            selected = currentTab == tab,
-                                            onClick = { currentTab = tab },
-                                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                            label = { Text(tab.label) },
-                                            colors = NavigationRailItemDefaults.colors(
-                                                selectedIconColor = PrimaryTeal,
-                                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                                            )
-                                        )
-                                    }
-                                }
-
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                    MainContent(
-                                        tab = currentTab,
-                                        authRepository = authRepository,
-                                        guruRepository = guruRepository,
-                                        profile = currentProfile,
-                                        onNavigateToGuru = { currentTab = NavigationTab.GURU },
-                                        onLogout = {
-                                            currentProfile = null
-                                            screenState = ScreenState.LOGIN
-                                        }
-                                    )
-                                }
-                            }
-                        } else {
-                            // Phone Layout: Bottom Navigation Bar
-                            Scaffold(
-                                bottomBar = {
-                                    NavigationBar(
                             if (isTabletOrWide) {
                                 // Tablet & iPad Responsive Layout: NavigationRail on the left
                                 Row(modifier = Modifier.fillMaxSize()) {
                                     NavigationRail(
                                         containerColor = MaterialTheme.colorScheme.surface,
-                                        tonalElevation = 4.dp
                                         contentColor = PrimaryTeal
                                     ) {
                                         Spacer(modifier = Modifier.height(16.dp))
                                         NavigationTab.entries.forEach { tab ->
-                                            NavigationBarItem(
                                             NavigationRailItem(
                                                 selected = currentTab == tab,
                                                 onClick = { currentTab = tab },
                                                 icon = { Icon(tab.icon, contentDescription = tab.label) },
                                                 label = { Text(tab.label) },
-                                                colors = NavigationBarItemDefaults.colors(
                                                 colors = NavigationRailItemDefaults.colors(
                                                     selectedIconColor = PrimaryTeal,
                                                     indicatorColor = MaterialTheme.colorScheme.primaryContainer
@@ -203,21 +156,6 @@ fun App() {
                                         )
                                     }
                                 }
-                            ) { innerPadding ->
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(innerPadding)
-                                ) {
-                                    MainContent(
-                                        tab = currentTab,
-                                        authRepository = authRepository,
-                                        guruRepository = guruRepository,
-                                        profile = currentProfile,
-                                        onNavigateToGuru = { currentTab = NavigationTab.GURU },
-                                        onLogout = {
-                                            currentProfile = null
-                                            screenState = ScreenState.LOGIN
                             } else {
                                 // Phone Layout: Bottom Navigation Bar
                                 Scaffold(
@@ -239,7 +177,6 @@ fun App() {
                                                 )
                                             }
                                         }
-                                    )
                                     }
                                 ) { innerPadding ->
                                     Box(
@@ -284,7 +221,6 @@ private fun MainContent(
         NavigationTab.HOME -> {
             HomeScreen(
                 profile = profile,
-                onNavigateToGuru = onNavigateToGuru
                 onNavigateToGuru = onNavigateToGuru,
                 onNavigateToUjian = onNavigateToUjian
             )
