@@ -30,7 +30,7 @@ fun HomeScreen(
     onNavigateToGuru: () -> Unit
 ) {
     val displayName = profile?.displayName ?: "Siswa"
-    val displayDetail = profile?.displayDetail ?: "Kelas 10-C"
+    val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
 
     BoxWithConstraints(
