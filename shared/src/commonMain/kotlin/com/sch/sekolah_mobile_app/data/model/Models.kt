@@ -60,7 +60,6 @@ data class UserProfileResponse(
 
     val displayDetail: String
         get() = studentIdentity?.detail?.trim()?.takeIf { it.isNotEmpty() }
-            ?: "Kelas 10-C"
             ?: "Kelas 10-B"
 
     val nis: String
