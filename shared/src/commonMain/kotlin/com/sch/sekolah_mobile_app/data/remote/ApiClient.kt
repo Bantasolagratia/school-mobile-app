@@ -4,6 +4,12 @@ import com.sch.sekolah_mobile_app.data.model.Guru
 import com.sch.sekolah_mobile_app.data.model.LoginRequest
 import com.sch.sekolah_mobile_app.data.model.SessionResponse
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
+import com.sch.sekolah_mobile_app.data.model.EmergencyExitVerifyRequest
+import com.sch.sekolah_mobile_app.data.model.EmergencyExitVerifyResponse
+import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatRequest
+import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatResponse
+import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -90,6 +96,114 @@ class ApiClient {
         if (!response.status.isSuccess()) {
             val responseText = response.bodyAsText()
             var message = "Gagal mengambil data guru (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getUpcomingExams(token: String, kelas: String? = null): List<ExamScheduleItem> {
+        val url = ApiConfig.getStudentUpcomingExamsUrl(kelas)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil daftar ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun sendSessionHeartbeat(
+        token: String,
+        scheduleId: String? = null,
+        status: String? = null,
+        keterangan: String? = null
+    ): SessionHeartbeatResponse {
+        val url = ApiConfig.getSessionHeartbeatUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(SessionHeartbeatRequest(scheduleId = scheduleId, status = status, keterangan = keterangan))
+        }
+
+        val responseText = response.bodyAsText()
+        if (response.status.value == 409) {
+            var msg = "Akun ini sedang aktif dalam sesi ujian di perangkat lain. Silakan hubungi Guru Pengawas untuk melakukan Reset Sesi / Kick jika Anda ingin berganti perangkat."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                msg = jsonTree["message"]?.jsonPrimitive?.content ?: msg
+            } catch (_: Exception) {}
+            return SessionHeartbeatResponse(active = false, action = "BLOCKED", message = msg)
+        }
+
+        if (response.status.value == 401) {
+            var msg = "Sesi Anda telah di-reset oleh Pengawas atau dialihkan."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                msg = jsonTree["message"]?.jsonPrimitive?.content ?: msg
+            } catch (_: Exception) {}
+            return SessionHeartbeatResponse(active = false, action = "KICK", message = msg)
+        }
+
+        if (!response.status.isSuccess()) {
+            var message = "Gagal mengirim heartbeat (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun verifyEmergencyExitKey(
+        token: String,
+        scheduleId: String,
+        kelas: String? = null,
+        key: String
+    ): EmergencyExitVerifyResponse {
+        val url = ApiConfig.getVerifyExitKeyUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(EmergencyExitVerifyRequest(scheduleId = scheduleId, kelas = kelas, key = key.trim()))
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memverifikasi kunci keluar (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getUjianDetail(token: String, ujianId: String): UjianDetailMobile {
+        val url = ApiConfig.getUjianDetailUrl(ujianId)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil lembar ujian (${response.status.value})"
             try {
                 val jsonTree = json.parseToJsonElement(responseText).jsonObject
                 message = jsonTree["message"]?.jsonPrimitive?.content ?: message
