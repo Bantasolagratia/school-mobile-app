@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "sekolah-mobile-app"
 include(":app")
  
+include(":shared")
