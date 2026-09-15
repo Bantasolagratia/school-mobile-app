@@ -10,6 +10,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AndroidPlatformContext.init(this)
+        AndroidPlatformContext.setActivity(this)
         enableEdgeToEdge()
         setContent {
             App()
