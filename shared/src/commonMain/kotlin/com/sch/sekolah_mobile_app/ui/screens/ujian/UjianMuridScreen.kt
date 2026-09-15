@@ -462,26 +462,24 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
 
     // Format jam HH:mm
     return try {
-        val now = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Jakarta"))
-        val todayStr = now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        val nowTimeStr = now.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+        val (todayStr, nowTimeStr) = getCurrentWibDateTime()
 
-        if (tanggal.isNotBlank() && tanggal < todayStr) {
+        if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal < todayStr) {
             Triple(false, "Selesai", Color(0xFF6B7280))
-        } else if (tanggal.isNotBlank() && tanggal > todayStr) {
+        } else if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal > todayStr) {
             Triple(false, "Mendatang", PrimaryTeal)
         } else {
             // Hari ini
-            if (jamMulai.isNotBlank() && nowTimeStr < jamMulai) {
+            if (nowTimeStr.isNotEmpty() && jamMulai.isNotBlank() && nowTimeStr < jamMulai) {
                 Triple(false, "Mulai $jamMulai WIB", Color(0xFFD97706))
-            } else if (jamSelesai.isNotBlank() && nowTimeStr > jamSelesai) {
+            } else if (nowTimeStr.isNotEmpty() && jamSelesai.isNotBlank() && nowTimeStr > jamSelesai) {
                 Triple(false, "Selesai", Color(0xFF6B7280))
             } else {
                 Triple(true, "Siap Dikerjakan", Color(0xFF059669))
             }
         }
     } catch (_: Exception) {
-        // Fallback jika formatting zone error
+        // Fallback jika error
         Triple(true, "Aktif", Color(0xFF059669))
     }
 }

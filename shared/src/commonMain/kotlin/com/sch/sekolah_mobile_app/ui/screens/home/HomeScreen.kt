@@ -27,12 +27,10 @@ import com.sch.sekolah_mobile_app.ui.theme.*
 @Composable
 fun HomeScreen(
     profile: UserProfileResponse?,
-    onNavigateToGuru: () -> Unit
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit = {}
 ) {
     val displayName = profile?.displayName ?: "Siswa"
-    val displayDetail = profile?.displayDetail ?: "Kelas 10-C"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
 
@@ -263,8 +261,7 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         icon = Icons.AutoMirrored.Filled.Assignment,
                         title = "Tugas & Ujian",
-                        subtitle = "Status pengumpulan tugas aktif"
-                        subtitle = "Status pengumpulan tugas aktif",
+                        subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
                 }
@@ -278,8 +275,7 @@ fun HomeScreen(
                     QuickInfoCard(
                         icon = Icons.AutoMirrored.Filled.Assignment,
                         title = "Tugas & Ujian",
-                        subtitle = "Status pengumpulan tugas aktif"
-                        subtitle = "Status pengumpulan tugas aktif",
+                        subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
                 }
@@ -332,7 +328,6 @@ private fun QuickInfoCard(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    modifier: Modifier = Modifier
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null
 ) {
@@ -343,7 +338,6 @@ private fun QuickInfoCard(
     }
 
     Card(
-        modifier = modifier.fillMaxWidth(),
         modifier = clickableModifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
@@ -363,7 +357,6 @@ private fun QuickInfoCard(
                 Icon(imageVector = icon, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DarkNavy)
                 Text(text = subtitle, fontSize = 11.sp, color = SlateGray)
@@ -379,4 +372,3 @@ private fun QuickInfoCard(
         }
     }
 }
-
