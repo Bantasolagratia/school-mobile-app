@@ -260,7 +260,7 @@ fun ExamTakingScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Mode Kiosk Aman Aktif",
+                                text = "Mode Aman Aktif",
                                 fontSize = 11.sp,
                                 color = PrimaryTeal,
                                 fontWeight = FontWeight.SemiBold
@@ -596,7 +596,7 @@ fun ExamTakingScreen(
                 },
                 text = {
                     Text(
-                        "Ujian berada dalam mode Kiosk Penuh. Anda dilarang keluar, menekan tombol kembali, atau berpindah aplikasi selama ujian berlangsung.\n\nJika terjadi kendala darurat, gunakan tombol 'Kunci Keluar' dan hubungi Guru Pengawas.",
+                        "Ujian berada dalam mode Layar Penuh Terkunci. Anda dilarang keluar, menekan tombol kembali, atau berpindah aplikasi selama ujian berlangsung.\n\nJika terjadi kendala darurat, gunakan tombol 'Kunci Keluar' dan hubungi Guru Pengawas.",
                         fontSize = 13.sp,
                         color = SlateGray,
                         lineHeight = 18.sp
