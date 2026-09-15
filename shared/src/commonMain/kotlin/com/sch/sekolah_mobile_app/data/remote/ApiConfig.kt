@@ -4,15 +4,18 @@ import com.sch.sekolah_mobile_app.data.storage.getDefaultServerHost
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 
 object ApiConfig {
-    const val AUTH_PORT = 8000
-    const val API_PORT = 8080
+    const val GATEWAY_PORT = 5173
 
     private const val KEY_CUSTOM_HOST = "custom_server_host"
 
     fun getHost(): String {
         val storage = getPlatformStorage()
-        return storage.getString(KEY_CUSTOM_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: getDefaultServerHost()
+        val custom = storage.getString(KEY_CUSTOM_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
+        if (custom == "10.0.2.2" || custom == "localhost") {
+            storage.remove(KEY_CUSTOM_HOST)
+            return getDefaultServerHost()
+        }
+        return custom ?: getDefaultServerHost()
     }
 
     fun setHost(newHost: String) {
@@ -21,13 +24,23 @@ object ApiConfig {
         storage.setString(KEY_CUSTOM_HOST, clean)
     }
 
+    private fun getBaseUrl(): String {
+        val host = getHost()
+        val cleanHost = host.removePrefix("http://").removePrefix("https://")
+        return if (cleanHost.contains(":")) {
+            "http://$cleanHost"
+        } else {
+            "http://$cleanHost:$GATEWAY_PORT"
+        }
+    }
+
     fun getTokenUrl(): String =
-        "http://${getHost()}:$AUTH_PORT/token?grant_type=password"
+        "${getBaseUrl()}/auth/token?grant_type=password"
 
     fun getProfileUrl(): String =
-        "http://${getHost()}:$API_PORT/auth-flow/profile"
+        "${getBaseUrl()}/api/auth-flow/profile"
 
     fun getGuruUrl(): String =
-        "http://${getHost()}:$API_PORT/management/guru"
+        "${getBaseUrl()}/api/management/guru"
 }
 

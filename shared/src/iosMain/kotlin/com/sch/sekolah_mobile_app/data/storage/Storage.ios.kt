@@ -29,7 +29,7 @@ actual fun getPlatformStorage(): PlatformStorage {
     return PlatformStorage(NSUserDefaults.standardUserDefaults)
 }
 
-actual fun getDefaultServerHost(): String = "localhost"
+actual fun getDefaultServerHost(): String = "192.168.18.94"
 
 actual fun copyToClipboard(label: String, text: String) {
     UIPasteboard.generalPasteboard.string = text

@@ -38,7 +38,7 @@ actual fun getPlatformStorage(): PlatformStorage {
     return PlatformStorage(prefs)
 }
 
-actual fun getDefaultServerHost(): String = "10.0.2.2"
+actual fun getDefaultServerHost(): String = "192.168.18.94"
 
 actual fun copyToClipboard(label: String, text: String) {
     val context = AndroidPlatformContext.get()

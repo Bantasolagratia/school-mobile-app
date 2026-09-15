@@ -9,7 +9,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.School
@@ -29,7 +28,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sch.sekolah_mobile_app.data.remote.ApiConfig
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -45,8 +43,6 @@ fun LoginScreen(
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-    var showHostDialog by remember { mutableStateOf(false) }
-    var hostText by remember { mutableStateOf(ApiConfig.getHost()) }
 
     fun performLogin() {
         if (email.isBlank() || password.isBlank()) {
@@ -213,76 +209,8 @@ fun LoginScreen(
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Host Switcher Button
-                TextButton(
-                    onClick = {
-                        hostText = ApiConfig.getHost()
-                        showHostDialog = true
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Dns,
-                        contentDescription = "Server Host",
-                        tint = SlateGray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Host: ${ApiConfig.getHost()}",
-                        color = SlateGray,
-                        fontSize = 12.sp
-                    )
-                }
             }
         }
-    }
-
-    if (showHostDialog) {
-        AlertDialog(
-            onDismissRequest = { showHostDialog = false },
-            title = { Text("Pengaturan Host Server") },
-            text = {
-                Column {
-                    Text(
-                        text = "Sesuaikan IP / hostname backend jika testing di perangkat nyata atau emulator.",
-                        fontSize = 13.sp,
-                        color = SlateGray
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = hostText,
-                        onValueChange = { hostText = it },
-                        label = { Text("Server Host / IP") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Contoh: 10.0.2.2 (Android Emulator), localhost (iOS), atau 192.168.18.94 (Wi-Fi LAN)",
-                        fontSize = 11.sp,
-                        color = SlateLight
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        ApiConfig.setHost(hostText)
-                        showHostDialog = false
-                    }
-                ) {
-                    Text("Simpan")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showHostDialog = false }) {
-                    Text("Batal")
-                }
-            }
-        )
     }
 }
 
