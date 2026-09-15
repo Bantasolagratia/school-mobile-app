@@ -136,9 +136,9 @@ fun ProfileScreen(
 
                 ProfileInfoRow(icon = Icons.Default.Dns, label = "Host Backend Terhubung", value = currentHost)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Security, label = "Auth Service Port", value = "${ApiConfig.AUTH_PORT} (GoTrue)")
+                ProfileInfoRow(icon = Icons.Default.Security, label = "API Gateway Port", value = "${ApiConfig.GATEWAY_PORT} (Unified Gateway)")
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Storage, label = "API Service Port", value = "${ApiConfig.API_PORT} (Spring Boot)")
+                ProfileInfoRow(icon = Icons.Default.Storage, label = "Layanan Terintegrasi", value = "Spring Boot (${ApiConfig.API_PORT}) & GoTrue (${ApiConfig.AUTH_PORT})")
             }
         }
 
