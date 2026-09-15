@@ -6,6 +6,7 @@ import com.sch.sekolah_mobile_app.data.model.SessionResponse
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -30,6 +31,11 @@ class ApiClient {
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(json)
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+            connectTimeoutMillis = 15_000
+            socketTimeoutMillis = 30_000
         }
     }
 
