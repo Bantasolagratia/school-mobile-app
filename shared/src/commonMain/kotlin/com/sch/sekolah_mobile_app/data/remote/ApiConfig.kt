@@ -44,4 +44,19 @@ object ApiConfig {
 
     fun getGuruUrl(): String =
         "${getBaseUrl()}/api/management/guru"
+
+    fun getStudentUpcomingExamsUrl(kelas: String? = null): String {
+        val k = kelas?.trim()?.takeIf { it.isNotEmpty() }
+        return if (k != null) "${getBaseUrl()}/api/ujian/schedule/student-upcoming?kelas=$k"
+        else "${getBaseUrl()}/api/ujian/schedule/student-upcoming"
+    }
+
+    fun getSessionHeartbeatUrl(): String =
+        "${getBaseUrl()}/api/ujian/schedule/session-heartbeat"
+
+    fun getVerifyExitKeyUrl(): String =
+        "${getBaseUrl()}/api/ujian/schedule/verify-exit-key"
+
+    fun getUjianDetailUrl(id: String): String =
+        "${getBaseUrl()}/api/ujian/$id"
 }

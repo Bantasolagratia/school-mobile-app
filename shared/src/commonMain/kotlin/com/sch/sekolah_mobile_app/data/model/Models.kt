@@ -60,6 +60,7 @@ data class UserProfileResponse(
 
     val displayDetail: String
         get() = studentIdentity?.detail?.trim()?.takeIf { it.isNotEmpty() }
+            ?: "Kelas 10-C"
             ?: "Kelas 10-B"
 
     val nis: String
@@ -87,4 +88,108 @@ data class Guru(
     val displayJabatan: String
         get() = jabatan?.trim()?.takeIf { it.isNotEmpty() } ?: "Guru Pengajar"
 }
+
+@Serializable
+data class Jadwal(
+    val idJadwal: String? = null,
+    val judulKegiatan: String? = null,
+    val mataPelajaran: String? = null,
+    val kelas: String? = null,
+    val guru: String? = null,
+    val ruangan: String? = null,
+    val waktu: String? = null,
+    val notes: String? = null
+)
+
+@Serializable
+data class TargetKelasItemMobile(
+    val kelas: String,
+    val guruPengampu: String? = null,
+    val namaGuru: String? = null,
+    val status: String? = null,
+    val pengawas: String? = null,
+    val namaPengawas: String? = null,
+    val ruangan: String? = null,
+    val emergencyExitKey: String? = null
+)
+
+@Serializable
+data class ExamScheduleItem(
+    val id: String? = null,
+    val ujianId: String? = null,
+    val judulUjian: String? = null,
+    val kodeMapel: String? = null,
+    val namaMapel: String? = null,
+    val guruPengaju: String? = null,
+    val namaGuruPengaju: String? = null,
+    val tanggal: String? = null,
+    val jamMulai: String? = null,
+    val jamSelesai: String? = null,
+    val waktuMulai: String? = null,
+    val waktuSelesai: String? = null,
+    val isMandiri: Boolean = true,
+    val status: String? = null,
+    val adminStatus: String? = null,
+    val targetKelas: List<TargetKelasItemMobile> = emptyList()
+) {
+    val displaySupervisor: String
+        get() {
+            val pengawas = targetKelas.firstOrNull()?.namaPengawas?.takeIf { it.isNotBlank() }
+            return pengawas ?: namaGuruPengaju ?: "Guru Pengawas"
+        }
+
+    val displayRuangan: String
+        get() {
+            return targetKelas.firstOrNull()?.ruangan?.takeIf { it.isNotBlank() } ?: "Ruang Ujian"
+        }
+}
+
+@Serializable
+data class UjianQuestionMobile(
+    val id: String? = null,
+    val type: String? = null,
+    val urutan: Int? = 0,
+    val pertanyaan: String? = null,
+    val pilihan: List<String> = emptyList(),
+    val bobot: Int? = 1
+)
+
+@Serializable
+data class UjianDetailMobile(
+    val id: String? = null,
+    val judul: String? = null,
+    val kodeMapel: String? = null,
+    val namaMapel: String? = null,
+    val authorName: String? = null,
+    val questions: List<UjianQuestionMobile> = emptyList()
+)
+
+@Serializable
+data class EmergencyExitVerifyRequest(
+    val scheduleId: String,
+    val kelas: String? = null,
+    val key: String
+)
+
+@Serializable
+data class EmergencyExitVerifyResponse(
+    val valid: Boolean = false,
+    val message: String? = null
+)
+
+@Serializable
+data class SessionHeartbeatRequest(
+    val scheduleId: String? = null,
+    val status: String? = null,
+    val keterangan: String? = null
+)
+
+@Serializable
+data class SessionHeartbeatResponse(
+    val active: Boolean = true,
+    val action: String? = null,
+    val message: String? = null,
+    val serverTime: String? = null
+)
+
 
