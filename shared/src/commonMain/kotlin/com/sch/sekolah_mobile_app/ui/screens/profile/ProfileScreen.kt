@@ -20,7 +20,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
-import com.sch.sekolah_mobile_app.data.remote.ApiConfig
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.ui.theme.*
 
@@ -36,7 +35,6 @@ fun ProfileScreen(
     val email = profile?.email ?: "wrenley@murid.sekolah.com"
     val nis = profile?.nis ?: "202610012"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-C"
-    val currentHost = ApiConfig.getHost()
 
     Column(
         modifier = Modifier
@@ -113,32 +111,6 @@ fun ProfileScreen(
                 ProfileInfoRow(icon = Icons.Default.Class, label = "Kelas / Rombel", value = displayDetail)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
                 ProfileInfoRow(icon = Icons.Default.CheckCircle, label = "Status", value = "Aktif Terdaftar")
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Connection Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CardSurface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Informasi Koneksi Sistem",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = DarkNavy
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                ProfileInfoRow(icon = Icons.Default.Dns, label = "Host Backend Terhubung", value = currentHost)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Security, label = "API Gateway Port", value = "${ApiConfig.GATEWAY_PORT} (Unified Gateway)")
-                HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Storage, label = "Layanan Terintegrasi", value = "Spring Boot (${ApiConfig.API_PORT}) & GoTrue (${ApiConfig.AUTH_PORT})")
             }
         }
 
