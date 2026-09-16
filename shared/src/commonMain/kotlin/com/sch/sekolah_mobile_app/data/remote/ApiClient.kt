@@ -330,5 +330,18 @@ class ApiClient {
 
         return response.body()
     }
+
+    suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
+        val fullUrl = if (pathOrUrl.startsWith("http")) {
+            pathOrUrl
+        } else {
+            "${ApiConfig.getBaseUrl()}${if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"}"
+        }
+        val response = httpClient.get(fullUrl)
+        if (!response.status.isSuccess()) {
+            throw Exception("Gagal memuat gambar (${response.status.value})")
+        }
+        return response.body()
+    }
 }
 

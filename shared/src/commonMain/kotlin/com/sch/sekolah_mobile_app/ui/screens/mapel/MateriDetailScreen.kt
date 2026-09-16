@@ -1,5 +1,6 @@
 package com.sch.sekolah_mobile_app.ui.screens.mapel
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -18,9 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.EditorBlockItem
@@ -28,6 +31,8 @@ import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -373,7 +378,11 @@ fun MateriDetailScreen(
                                 }
                             } else {
                                 currentMateri.blocks.forEachIndexed { index, block ->
-                                    MateriBlockItemView(block = block, blockIndex = index + 1)
+                                    MateriBlockItemView(
+                                        block = block,
+                                        blockIndex = index + 1,
+                                        mapelRepository = mapelRepository
+                                    )
                                 }
                             }
                         }
@@ -389,7 +398,8 @@ fun MateriDetailScreen(
 @Composable
 private fun MateriBlockItemView(
     block: EditorBlockItem,
-    blockIndex: Int
+    blockIndex: Int,
+    mapelRepository: MataPelajaranRepository
 ) {
     val type = block.type?.lowercase() ?: "paragraph"
     val content = block.content ?: ""
@@ -625,33 +635,14 @@ private fun MateriBlockItemView(
         }
 
         "image" -> {
-            val caption = block.properties?.caption ?: ""
-            Surface(
-                color = SurfaceVariantColor,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = null,
-                        tint = PrimaryTeal,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = if (caption.isNotBlank()) caption else content.ifBlank { "Gambar Materi Pembelajaran" },
-                        fontSize = 12.sp,
-                        fontStyle = FontStyle.Italic,
-                        color = SlateGray
-                    )
-                }
-            }
+            val url = block.properties?.url
+            val caption = block.properties?.caption
+            MateriImageBlock(
+                url = url,
+                caption = caption,
+                fallbackText = content,
+                mapelRepository = mapelRepository
+            )
         }
 
         else -> {
@@ -662,6 +653,104 @@ private fun MateriBlockItemView(
                 color = DarkNavy,
                 lineHeight = 22.sp
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun MateriImageBlock(
+    url: String?,
+    caption: String?,
+    fallbackText: String,
+    mapelRepository: MataPelajaranRepository
+) {
+    var imageBitmap by remember(url) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var isLoading by remember(url) { mutableStateOf(!url.isNullOrBlank()) }
+    var isError by remember(url) { mutableStateOf(false) }
+
+    LaunchedEffect(url) {
+        if (!url.isNullOrBlank()) {
+            isLoading = true
+            isError = false
+            try {
+                val bytes = mapelRepository.fetchImageBytes(url)
+                imageBitmap = bytes.decodeToImageBitmap()
+                isLoading = false
+            } catch (_: Exception) {
+                isLoading = false
+                isError = true
+            }
+        }
+    }
+
+    Surface(
+        color = SurfaceVariantColor,
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val bmp = imageBitmap
+            when {
+                bmp != null -> {
+                    Image(
+                        bitmap = bmp,
+                        contentDescription = caption ?: fallbackText,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentScale = ContentScale.FillWidth
+                    )
+                }
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = PrimaryTeal,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Memuat gambar...",
+                                fontSize = 11.sp,
+                                color = SlateGray
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    Icon(
+                        imageVector = Icons.Default.Image,
+                        contentDescription = null,
+                        tint = PrimaryTeal,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+            }
+
+            val cap = caption?.ifBlank { null } ?: fallbackText.ifBlank { null }
+            if (cap != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = cap,
+                    fontSize = 11.sp,
+                    fontStyle = FontStyle.Italic,
+                    color = SlateGray,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 15.sp
+                )
+            }
         }
     }
 }

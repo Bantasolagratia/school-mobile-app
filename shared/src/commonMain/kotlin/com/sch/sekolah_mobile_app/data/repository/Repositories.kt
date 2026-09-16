@@ -177,6 +177,10 @@ class MataPelajaranRepository(
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getMateriDetail(token, materiId)
     }
+
+    suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
+        return apiClient.fetchImageBytes(pathOrUrl)
+    }
 }
 
 
