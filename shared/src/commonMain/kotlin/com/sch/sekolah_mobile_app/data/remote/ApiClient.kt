@@ -169,6 +169,64 @@ class ApiClient {
         return response.body()
     }
 
+    suspend fun examStart(
+        token: String,
+        scheduleId: String? = null,
+        keterangan: String? = null
+    ): SessionHeartbeatResponse {
+        val url = ApiConfig.getExamStartUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(SessionHeartbeatRequest(scheduleId = scheduleId, status = "MENGERJAKAN", keterangan = keterangan))
+        }
+
+        val responseText = response.bodyAsText()
+        if (response.status.value == 409) {
+            var msg = "Akun ini sedang aktif dalam sesi ujian di perangkat lain. Silakan hubungi Guru Pengawas untuk melakukan Reset Sesi / Kick jika Anda ingin berganti perangkat."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                msg = jsonTree["message"]?.jsonPrimitive?.content ?: msg
+            } catch (_: Exception) {}
+            return SessionHeartbeatResponse(active = false, action = "BLOCKED", message = msg)
+        }
+
+        if (response.status.value == 401) {
+            var msg = "Sesi Anda telah di-reset oleh Pengawas atau dialihkan."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                msg = jsonTree["message"]?.jsonPrimitive?.content ?: msg
+            } catch (_: Exception) {}
+            return SessionHeartbeatResponse(active = false, action = "KICK", message = msg)
+        }
+
+        if (!response.status.isSuccess()) {
+            var message = "Gagal memulai sesi ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun examExit(
+        token: String,
+        scheduleId: String? = null,
+        status: String? = "SELESAI",
+        keterangan: String? = null
+    ): Boolean {
+        val url = ApiConfig.getExamExitUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(SessionHeartbeatRequest(scheduleId = scheduleId, status = status, keterangan = keterangan))
+        }
+        return response.status.isSuccess()
+    }
+
     suspend fun verifyEmergencyExitKey(
         token: String,
         scheduleId: String,

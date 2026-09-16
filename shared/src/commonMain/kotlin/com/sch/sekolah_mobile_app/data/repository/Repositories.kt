@@ -115,6 +115,28 @@ class UjianRepository(
         return apiClient.sendSessionHeartbeat(token, scheduleId, status, keterangan)
     }
 
+    suspend fun examStart(
+        scheduleId: String? = null,
+        keterangan: String? = null
+    ): com.sch.sekolah_mobile_app.data.model.SessionHeartbeatResponse {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.examStart(token, scheduleId, keterangan)
+    }
+
+    suspend fun examExit(
+        scheduleId: String? = null,
+        status: String? = "SELESAI",
+        keterangan: String? = null
+    ): Boolean {
+        val token = authRepository.getAccessToken() ?: return false
+        return try {
+            apiClient.examExit(token, scheduleId, status, keterangan)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     suspend fun verifyEmergencyExitKey(
         scheduleId: String,
         kelas: String?,
