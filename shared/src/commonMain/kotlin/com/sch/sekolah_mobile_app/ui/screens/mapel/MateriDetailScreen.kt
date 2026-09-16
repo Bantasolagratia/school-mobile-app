@@ -3,6 +3,7 @@ package com.sch.sekolah_mobile_app.ui.screens.mapel
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.sch.sekolah_mobile_app.data.model.EditorBlockItem
 import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
@@ -274,6 +276,14 @@ fun MateriDetailScreen(
                                         )
                                     }
                                 }
+                            }
+
+                            if (!currentMateri.coverImage.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                MateriCoverImage(
+                                    coverImageUrl = currentMateri.coverImage,
+                                    mapelRepository = mapelRepository
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -659,6 +669,47 @@ private fun MateriBlockItemView(
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
+private fun MateriCoverImage(
+    coverImageUrl: String,
+    mapelRepository: MataPelajaranRepository
+) {
+    var imageBitmap by remember(coverImageUrl) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var isLoading by remember(coverImageUrl) { mutableStateOf(true) }
+
+    LaunchedEffect(coverImageUrl) {
+        isLoading = true
+        try {
+            val bytes = mapelRepository.fetchImageBytes(coverImageUrl)
+            if (bytes.isNotEmpty()) {
+                imageBitmap = bytes.decodeToImageBitmap()
+            }
+        } catch (e: Exception) {
+            println("[MateriCoverImage] Gagal memuat cover dari $coverImageUrl: ${e.message}")
+        } finally {
+            isLoading = false
+        }
+    }
+
+    val bmp = imageBitmap
+    if (bmp != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            Image(
+                bitmap = bmp,
+                contentDescription = "Cover Materi",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
 private fun MateriImageBlock(
     url: String?,
     caption: String?,
@@ -668,16 +719,23 @@ private fun MateriImageBlock(
     var imageBitmap by remember(url) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
     var isLoading by remember(url) { mutableStateOf(!url.isNullOrBlank()) }
     var isError by remember(url) { mutableStateOf(false) }
+    var showZoomDialog by remember { mutableStateOf(false) }
+    var retryCount by remember { mutableStateOf(0) }
 
-    LaunchedEffect(url) {
+    LaunchedEffect(url, retryCount) {
         if (!url.isNullOrBlank()) {
             isLoading = true
             isError = false
             try {
                 val bytes = mapelRepository.fetchImageBytes(url)
-                imageBitmap = bytes.decodeToImageBitmap()
+                if (bytes.isNotEmpty()) {
+                    imageBitmap = bytes.decodeToImageBitmap()
+                } else {
+                    isError = true
+                }
                 isLoading = false
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                println("[MateriImageBlock] Gagal memuat gambar dari $url: ${e.message}")
                 isLoading = false
                 isError = true
             }
@@ -687,6 +745,7 @@ private fun MateriImageBlock(
     Surface(
         color = SurfaceVariantColor,
         shape = RoundedCornerShape(14.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStrokeColor),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -697,21 +756,11 @@ private fun MateriImageBlock(
         ) {
             val bmp = imageBitmap
             when {
-                bmp != null -> {
-                    Image(
-                        bitmap = bmp,
-                        contentDescription = caption ?: fallbackText,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp)),
-                        contentScale = ContentScale.FillWidth
-                    )
-                }
                 isLoading -> {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(140.dp),
+                            .height(150.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -722,34 +771,170 @@ private fun MateriImageBlock(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Memuat gambar...",
+                                text = "Memuat lampiran materi...",
                                 fontSize = 11.sp,
                                 color = SlateGray
                             )
                         }
                     }
                 }
+                bmp != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable { showZoomDialog = true }
+                    ) {
+                        Image(
+                            bitmap = bmp,
+                            contentDescription = caption ?: fallbackText,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(CardSurface),
+                            contentScale = ContentScale.FillWidth
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = DarkNavy.copy(alpha = 0.75f),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Perbesar",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Perbesar",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    val cap = caption?.ifBlank { null } ?: fallbackText.ifBlank { null }
+                    if (cap != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = cap,
+                            fontSize = 12.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = SlateGray,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 16.sp,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                        )
+                    }
+                }
                 else -> {
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = null,
-                        tint = PrimaryTeal,
-                        modifier = Modifier.size(40.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp, horizontal = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = null,
+                                tint = SlateLight,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Text(
+                                text = "Lampiran gambar tidak dapat dimuat",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                            TextButton(
+                                onClick = { retryCount++ },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text("Muat Ulang", fontSize = 11.sp, color = PrimaryTeal)
+                            }
+                        }
+                    }
                 }
             }
+        }
+    }
 
-            val cap = caption?.ifBlank { null } ?: fallbackText.ifBlank { null }
-            if (cap != null) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = cap,
-                    fontSize = 11.sp,
-                    fontStyle = FontStyle.Italic,
-                    color = SlateGray,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 15.sp
-                )
+    // Modal dialog zoom gambar
+    if (showZoomDialog && imageBitmap != null) {
+        Dialog(onDismissRequest = { showZoomDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Detail Gambar Materi",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = DarkNavy
+                        )
+                        IconButton(
+                            onClick = { showZoomDialog = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Tutup",
+                                tint = SlateGray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Image(
+                        bitmap = imageBitmap!!,
+                        contentDescription = caption ?: fallbackText,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 180.dp, max = 450.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+
+                    val cap = caption?.ifBlank { null } ?: fallbackText.ifBlank { null }
+                    if (cap != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = cap,
+                            fontSize = 12.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = SlateGray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
         }
     }
