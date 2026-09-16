@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -28,7 +29,8 @@ import com.sch.sekolah_mobile_app.ui.theme.*
 fun HomeScreen(
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
-    onNavigateToUjian: () -> Unit = {}
+    onNavigateToUjian: () -> Unit = {},
+    onNavigateToMapel: () -> Unit = {}
 ) {
     val displayName = profile?.displayName ?: "Siswa"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
@@ -253,9 +255,10 @@ fun HomeScreen(
                 ) {
                     QuickInfoCard(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Default.CalendarToday,
-                        title = "Jadwal Pelajaran",
-                        subtitle = "Lihat agenda kelas mingguan"
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
+                        title = "Mata Pelajaran",
+                        subtitle = "Bahan ajar & materi bacaan",
+                        onClick = onNavigateToMapel
                     )
                     QuickInfoCard(
                         modifier = Modifier.weight(1f),
@@ -264,19 +267,31 @@ fun HomeScreen(
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
+                    QuickInfoCard(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CalendarToday,
+                        title = "Jadwal Pelajaran",
+                        subtitle = "Lihat agenda kelas mingguan"
+                    )
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     QuickInfoCard(
-                        icon = Icons.Default.CalendarToday,
-                        title = "Jadwal Pelajaran",
-                        subtitle = "Lihat agenda kelas mingguan"
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
+                        title = "Mata Pelajaran",
+                        subtitle = "Bahan ajar & materi bacaan",
+                        onClick = onNavigateToMapel
                     )
                     QuickInfoCard(
                         icon = Icons.AutoMirrored.Filled.Assignment,
                         title = "Tugas & Ujian",
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
+                    )
+                    QuickInfoCard(
+                        icon = Icons.Default.CalendarToday,
+                        title = "Jadwal Pelajaran",
+                        subtitle = "Lihat agenda kelas mingguan"
                     )
                 }
             }

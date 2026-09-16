@@ -66,4 +66,16 @@ object ApiConfig {
 
     fun getUjianDetailUrl(id: String): String =
         "${getBaseUrl()}/api/ujian/$id"
+
+    fun getStudentMataPelajaranUrl(kelas: String? = null): String {
+        val k = kelas?.trim()?.takeIf { it.isNotEmpty() }
+        return if (k != null) "${getBaseUrl()}/api/student/mata-pelajaran/my-subjects?kelas=$k"
+        else "${getBaseUrl()}/api/student/mata-pelajaran/my-subjects"
+    }
+
+    fun getMateriListUrl(kodeMapel: String): String =
+        "${getBaseUrl()}/api/materi?kodeMapel=$kodeMapel&myOnly=false"
+
+    fun getMateriDetailUrl(id: String): String =
+        "${getBaseUrl()}/api/materi/$id"
 }

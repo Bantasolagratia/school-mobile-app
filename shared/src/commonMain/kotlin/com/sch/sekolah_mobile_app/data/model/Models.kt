@@ -192,4 +192,51 @@ data class SessionHeartbeatResponse(
     val serverTime: String? = null
 )
 
+@Serializable
+data class StudentMataPelajaranItem(
+    val id: String? = null,
+    val kode: String? = null,
+    val nama: String? = null,
+    val kategori: String? = null,
+    val deskripsi: String? = null,
+    val guruPengajar: String? = null,
+    val guruNip: String? = null,
+    val totalMateri: Long = 0
+)
+
+@Serializable
+data class EditorBlockProperties(
+    val checked: Boolean? = null,
+    val icon: String? = null,
+    val language: String? = null,
+    val caption: String? = null,
+    val url: String? = null,
+    val rows: List<List<String>>? = null
+)
+
+@Serializable
+data class EditorBlockItem(
+    val id: String? = null,
+    val type: String? = null,
+    val content: String? = null,
+    val properties: EditorBlockProperties? = null
+)
+
+@Serializable
+data class MateriItem(
+    val id: String? = null,
+    val judul: String? = null,
+    val deskripsi: String? = null,
+    val kodeMapel: String? = null,
+    val namaMapel: String? = null,
+    val coverImage: String? = null,
+    val icon: String? = null,
+    val status: String? = null,
+    val author: String? = null,
+    val authorName: String? = null,
+    val blocks: List<EditorBlockItem> = emptyList(),
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+)
+
 
