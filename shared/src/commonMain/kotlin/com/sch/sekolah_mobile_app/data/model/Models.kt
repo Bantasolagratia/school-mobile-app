@@ -129,7 +129,8 @@ data class ExamScheduleItem(
     val isMandiri: Boolean = true,
     val status: String? = null,
     val adminStatus: String? = null,
-    val targetKelas: List<TargetKelasItemMobile> = emptyList()
+    val targetKelas: List<TargetKelasItemMobile> = emptyList(),
+    val studentStatus: String? = null
 ) {
     val displaySupervisor: String
         get() {
