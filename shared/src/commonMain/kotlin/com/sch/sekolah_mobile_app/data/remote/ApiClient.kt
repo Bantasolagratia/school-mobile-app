@@ -9,6 +9,8 @@ import com.sch.sekolah_mobile_app.data.model.EmergencyExitVerifyRequest
 import com.sch.sekolah_mobile_app.data.model.EmergencyExitVerifyResponse
 import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatRequest
 import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatResponse
+import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
+import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -262,6 +264,63 @@ class ApiClient {
         if (!response.status.isSuccess()) {
             val responseText = response.bodyAsText()
             var message = "Gagal mengambil lembar ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getStudentSubjects(token: String, kelas: String? = null): List<StudentMataPelajaranItem> {
+        val url = ApiConfig.getStudentMataPelajaranUrl(kelas)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil daftar mata pelajaran (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getMateriList(token: String, kodeMapel: String): List<MateriItem> {
+        val url = ApiConfig.getMateriListUrl(kodeMapel)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil daftar materi (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getMateriDetail(token: String, materiId: String): MateriItem {
+        val url = ApiConfig.getMateriDetailUrl(materiId)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil isi materi (${response.status.value})"
             try {
                 val jsonTree = json.parseToJsonElement(responseText).jsonObject
                 message = jsonTree["message"]?.jsonPrimitive?.content ?: message

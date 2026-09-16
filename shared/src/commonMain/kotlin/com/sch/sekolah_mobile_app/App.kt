@@ -11,13 +11,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
+import com.sch.sekolah_mobile_app.data.model.MateriItem
+import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
+import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
+import com.sch.sekolah_mobile_app.ui.screens.mapel.MateriDetailScreen
+import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMapelScreen
+import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMateriListScreen
 import com.sch.sekolah_mobile_app.ui.screens.profile.ProfileScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
@@ -33,7 +39,10 @@ enum class ScreenState {
 
 enum class SubScreen {
     NONE,
-    UJIAN_LIST
+    UJIAN_LIST,
+    MAPEL_STUDENT,
+    MATERI_LIST,
+    MATERI_DETAIL
 }
 
 enum class NavigationTab(val label: String, val icon: ImageVector) {
@@ -47,6 +56,7 @@ fun App() {
     val authRepository = remember { AuthRepository() }
     val guruRepository = remember { GuruRepository(authRepository = authRepository) }
     val ujianRepository = remember { UjianRepository(authRepository = authRepository) }
+    val mapelRepository = remember { MataPelajaranRepository(authRepository = authRepository) }
 
     var screenState by remember {
         mutableStateOf(if (authRepository.hasActiveSession()) ScreenState.MAIN else ScreenState.LOGIN)
@@ -55,6 +65,9 @@ fun App() {
     var currentSubScreen by remember { mutableStateOf(SubScreen.NONE) }
     var activeExamItem by remember { mutableStateOf<ExamScheduleItem?>(null) }
     var currentProfile by remember { mutableStateOf(authRepository.getCachedProfile()) }
+    var selectedMapel by remember { mutableStateOf<StudentMataPelajaranItem?>(null) }
+    var selectedMateri by remember { mutableStateOf<MateriItem?>(null) }
+    var selectedMateriId by remember { mutableStateOf<String?>(null) }
 
     SekolahMobileTheme {
         Surface(
@@ -105,97 +118,147 @@ fun App() {
                 }
 
                 ScreenState.MAIN -> {
-                    if (currentSubScreen == SubScreen.UJIAN_LIST) {
-                        UjianMuridScreen(
-                            ujianRepository = ujianRepository,
-                            profile = currentProfile,
-                            onNavigateBack = { currentSubScreen = SubScreen.NONE },
-                            onStartExam = { exam ->
-                                activeExamItem = exam
-                                screenState = ScreenState.EXAM_TAKING
-                            }
-                        )
-                    } else {
-                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                            val isTabletOrWide = maxWidth >= 600.dp
-
-                            if (isTabletOrWide) {
-                                // Tablet & iPad Responsive Layout: NavigationRail on the left
-                                Row(modifier = Modifier.fillMaxSize()) {
-                                    NavigationRail(
-                                        containerColor = MaterialTheme.colorScheme.surface,
-                                        contentColor = PrimaryTeal
-                                    ) {
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        NavigationTab.entries.forEach { tab ->
-                                            NavigationRailItem(
-                                                selected = currentTab == tab,
-                                                onClick = { currentTab = tab },
-                                                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                                label = { Text(tab.label) },
-                                                colors = NavigationRailItemDefaults.colors(
-                                                    selectedIconColor = PrimaryTeal,
-                                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
-                                                )
-                                            )
-                                        }
-                                    }
-
-                                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                                        MainContent(
-                                            tab = currentTab,
-                                            authRepository = authRepository,
-                                            guruRepository = guruRepository,
-                                            profile = currentProfile,
-                                            onNavigateToGuru = { currentTab = NavigationTab.GURU },
-                                            onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
-                                            onLogout = {
-                                                currentProfile = null
-                                                screenState = ScreenState.LOGIN
-                                            }
-                                        )
-                                    }
+                    when (currentSubScreen) {
+                        SubScreen.UJIAN_LIST -> {
+                            UjianMuridScreen(
+                                ujianRepository = ujianRepository,
+                                profile = currentProfile,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE },
+                                onStartExam = { exam ->
+                                    activeExamItem = exam
+                                    screenState = ScreenState.EXAM_TAKING
                                 }
+                            )
+                        }
+
+                        SubScreen.MAPEL_STUDENT -> {
+                            StudentMapelScreen(
+                                mapelRepository = mapelRepository,
+                                profile = currentProfile,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE },
+                                onSelectMapel = { mapel ->
+                                    selectedMapel = mapel
+                                    currentSubScreen = SubScreen.MATERI_LIST
+                                }
+                            )
+                        }
+
+                        SubScreen.MATERI_LIST -> {
+                            val mapel = selectedMapel
+                            if (mapel != null) {
+                                StudentMateriListScreen(
+                                    subject = mapel,
+                                    mapelRepository = mapelRepository,
+                                    onNavigateBack = { currentSubScreen = SubScreen.MAPEL_STUDENT },
+                                    onSelectMateri = { mat ->
+                                        selectedMateri = mat
+                                        selectedMateriId = mat.id
+                                        currentSubScreen = SubScreen.MATERI_DETAIL
+                                    }
+                                )
                             } else {
-                                // Phone Layout: Bottom Navigation Bar
-                                Scaffold(
-                                    bottomBar = {
-                                        NavigationBar(
+                                currentSubScreen = SubScreen.MAPEL_STUDENT
+                            }
+                        }
+
+                        SubScreen.MATERI_DETAIL -> {
+                            val mId = selectedMateriId
+                            if (mId != null) {
+                                MateriDetailScreen(
+                                    materiId = mId,
+                                    initialMateri = selectedMateri,
+                                    mapelRepository = mapelRepository,
+                                    onNavigateBack = { currentSubScreen = SubScreen.MATERI_LIST }
+                                )
+                            } else {
+                                currentSubScreen = SubScreen.MATERI_LIST
+                            }
+                        }
+
+                        SubScreen.NONE -> {
+                            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                                val isTabletOrWide = maxWidth >= 600.dp
+
+                                if (isTabletOrWide) {
+                                    // Tablet & iPad Responsive Layout: NavigationRail on the left
+                                    Row(modifier = Modifier.fillMaxSize()) {
+                                        NavigationRail(
                                             containerColor = MaterialTheme.colorScheme.surface,
-                                            tonalElevation = 4.dp
+                                            contentColor = PrimaryTeal
                                         ) {
+                                            Spacer(modifier = Modifier.height(16.dp))
                                             NavigationTab.entries.forEach { tab ->
-                                                NavigationBarItem(
+                                                NavigationRailItem(
                                                     selected = currentTab == tab,
                                                     onClick = { currentTab = tab },
                                                     icon = { Icon(tab.icon, contentDescription = tab.label) },
                                                     label = { Text(tab.label) },
-                                                    colors = NavigationBarItemDefaults.colors(
+                                                    colors = NavigationRailItemDefaults.colors(
                                                         selectedIconColor = PrimaryTeal,
                                                         indicatorColor = MaterialTheme.colorScheme.primaryContainer
                                                     )
                                                 )
                                             }
                                         }
+
+                                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                            MainContent(
+                                                tab = currentTab,
+                                                authRepository = authRepository,
+                                                guruRepository = guruRepository,
+                                                profile = currentProfile,
+                                                onNavigateToGuru = { currentTab = NavigationTab.GURU },
+                                                onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
+                                                onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
+                                                onLogout = {
+                                                    currentProfile = null
+                                                    screenState = ScreenState.LOGIN
+                                                }
+                                            )
+                                        }
                                     }
-                                ) { innerPadding ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(innerPadding)
-                                    ) {
-                                        MainContent(
-                                            tab = currentTab,
-                                            authRepository = authRepository,
-                                            guruRepository = guruRepository,
-                                            profile = currentProfile,
-                                            onNavigateToGuru = { currentTab = NavigationTab.GURU },
-                                            onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
-                                            onLogout = {
-                                                currentProfile = null
-                                                screenState = ScreenState.LOGIN
+                                } else {
+                                    // Phone Layout: Bottom Navigation Bar
+                                    Scaffold(
+                                        bottomBar = {
+                                            NavigationBar(
+                                                containerColor = MaterialTheme.colorScheme.surface,
+                                                tonalElevation = 4.dp
+                                            ) {
+                                                NavigationTab.entries.forEach { tab ->
+                                                    NavigationBarItem(
+                                                        selected = currentTab == tab,
+                                                        onClick = { currentTab = tab },
+                                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                                        label = { Text(tab.label) },
+                                                        colors = NavigationBarItemDefaults.colors(
+                                                            selectedIconColor = PrimaryTeal,
+                                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                                        )
+                                                    )
+                                                }
                                             }
-                                        )
+                                        }
+                                    ) { innerPadding ->
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(innerPadding)
+                                        ) {
+                                            MainContent(
+                                                tab = currentTab,
+                                                authRepository = authRepository,
+                                                guruRepository = guruRepository,
+                                                profile = currentProfile,
+                                                onNavigateToGuru = { currentTab = NavigationTab.GURU },
+                                                onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
+                                                onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
+                                                onLogout = {
+                                                    currentProfile = null
+                                                    screenState = ScreenState.LOGIN
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -215,6 +278,7 @@ private fun MainContent(
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit,
+    onNavigateToMapel: () -> Unit,
     onLogout: () -> Unit
 ) {
     when (tab) {
@@ -222,7 +286,8 @@ private fun MainContent(
             HomeScreen(
                 profile = profile,
                 onNavigateToGuru = onNavigateToGuru,
-                onNavigateToUjian = onNavigateToUjian
+                onNavigateToUjian = onNavigateToUjian,
+                onNavigateToMapel = onNavigateToMapel
             )
         }
         NavigationTab.GURU -> {

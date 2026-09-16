@@ -1,6 +1,8 @@
 package com.sch.sekolah_mobile_app.data.repository
 
 import com.sch.sekolah_mobile_app.data.model.Guru
+import com.sch.sekolah_mobile_app.data.model.MateriItem
+import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.remote.ApiClient
 import com.sch.sekolah_mobile_app.data.storage.PlatformStorage
@@ -151,6 +153,29 @@ class UjianRepository(
         val token = authRepository.getAccessToken()
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getUjianDetail(token, ujianId)
+    }
+}
+
+class MataPelajaranRepository(
+    private val authRepository: AuthRepository,
+    private val apiClient: ApiClient = ApiClient()
+) {
+    suspend fun getStudentSubjects(kelas: String? = null): List<StudentMataPelajaranItem> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getStudentSubjects(token, kelas)
+    }
+
+    suspend fun getMateriList(kodeMapel: String): List<MateriItem> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getMateriList(token, kodeMapel)
+    }
+
+    suspend fun getMateriDetail(materiId: String): MateriItem {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getMateriDetail(token, materiId)
     }
 }
 
