@@ -1,5 +1,6 @@
 package com.sch.sekolah_mobile_app.ui.screens.ujian
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -380,8 +381,13 @@ fun ExamTakingScreen(
                                     color = SurfaceVariantColor,
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
+                                    val typeLabel = when {
+                                        "ESSAI".equals(q.type, ignoreCase = true) -> "SOAL ISIAN"
+                                        "URAIAN".equals(q.type, ignoreCase = true) -> "SOAL URAIAN"
+                                        else -> (q.type ?: "PILIHAN GANDA").replace("_", " ")
+                                    }
                                     Text(
-                                        text = (q.type ?: "PILIHAN GANDA").replace("_", " "),
+                                        text = typeLabel,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = SlateGray,
@@ -392,15 +398,17 @@ fun ExamTakingScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Pertanyaan
+                            // Pertanyaan (bagian #blank# atau #blank direplace menjadi garis bawah _)
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = CardDefaults.cardColors(containerColor = CardSurface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
+                                val rawPertanyaan = q.pertanyaan ?: "Pertanyaan tidak memiliki teks."
+                                val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
                                 Text(
-                                    text = q.pertanyaan ?: "Pertanyaan tidak memiliki teks.",
+                                    text = formattedPertanyaan,
                                     fontSize = 15.sp,
                                     lineHeight = 22.sp,
                                     color = DarkNavy,
@@ -466,9 +474,10 @@ fun ExamTakingScreen(
                                     }
                                 }
                             } else {
-                                // ESSAI / URAIAN
+                                // ESSAI (ISIAN) / URAIAN
+                                val isIsian = "ESSAI".equals(q.type, ignoreCase = true)
                                 Text(
-                                    text = "Tuliskan Jawaban Anda:",
+                                    text = if (isIsian) "Jawaban Bagian Isian (_):" else "Tuliskan Jawaban Anda:",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = DarkNavy
@@ -479,8 +488,10 @@ fun ExamTakingScreen(
                                     onValueChange = { newAnswer ->
                                         studentAnswers = studentAnswers + (currentIndex to newAnswer)
                                     },
-                                    placeholder = { Text("Ketik jawaban lengkap di sini...") },
-                                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                                    placeholder = {
+                                        Text(if (isIsian) "Ketik kata isian untuk mengisi bagian (_) di sini..." else "Ketik jawaban lengkap di sini...")
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(if (isIsian) 100.dp else 140.dp),
                                     shape = RoundedCornerShape(12.dp)
                                 )
                             }
@@ -491,63 +502,127 @@ fun ExamTakingScreen(
                 }
             }
 
-            // Bottom Navigation Bar
+            // Bottom Navigation Bar (Fluid & Responsive)
             Surface(
                 color = CardSurface,
                 shadowElevation = 8.dp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
-                    // Tombol Sebelumnya
-                    Button(
-                        onClick = { if (currentIndex > 0) currentIndex-- },
-                        enabled = currentIndex > 0,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SurfaceVariantColor,
-                            contentColor = DarkNavy,
-                            disabledContainerColor = SurfaceVariantColor.copy(alpha = 0.5f)
-                        ),
-                        shape = RoundedCornerShape(10.dp)
+                    // Status Progress Ringkas
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Sebelumnya")
+                        Text(
+                            text = "Soal ${currentIndex + 1} dari ${questions.size}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SlateGray
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = PrimaryTealContainer.copy(alpha = 0.5f)
+                        ) {
+                            Text(
+                                text = "${studentAnswers.size}/${questions.size} Terjawab",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OnPrimaryTealContainer,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
                     }
 
-                    // Status Terjawab
-                    Text(
-                        text = "${studentAnswers.size}/${questions.size} Terjawab",
-                        fontSize = 12.sp,
-                        color = SlateGray,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Tombol Selanjutnya / Selesai
-                    if (currentIndex < questions.size - 1) {
-                        Button(
-                            onClick = { currentIndex++ },
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("Selanjutnya")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ChevronRight, contentDescription = null)
+                    // Tombol Aksi Navigasi Fluid
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Tombol Sebelumnya
+                        if (currentIndex > 0) {
+                            OutlinedButton(
+                                onClick = { currentIndex-- },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = DarkNavy
+                                ),
+                                border = BorderStroke(1.dp, BorderStrokeColor)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ChevronLeft,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Sebelumnya",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                            }
                         }
-                    } else {
+
+                        // Tombol Selanjutnya / Kumpulkan (Fluid flex-grow)
+                        val isLastQuestion = currentIndex >= questions.size - 1
                         Button(
-                            onClick = { showFinishConfirmation = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
-                            shape = RoundedCornerShape(10.dp)
+                            onClick = {
+                                if (!isLastQuestion) {
+                                    currentIndex++
+                                } else {
+                                    showFinishConfirmation = true
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(if (currentIndex > 0) 1.25f else 1f)
+                                .height(48.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (!isLastQuestion) PrimaryTeal else Color(0xFF059669)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
                         ) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Kumpulkan")
+                            if (!isLastQuestion) {
+                                Text(
+                                    text = "Selanjutnya",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Kumpulkan",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
