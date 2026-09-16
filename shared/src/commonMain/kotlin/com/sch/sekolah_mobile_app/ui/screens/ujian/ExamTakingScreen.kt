@@ -1,6 +1,7 @@
 package com.sch.sekolah_mobile_app.ui.screens.ujian
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,12 +21,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.decodeToImageBitmap
 import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.UjianQuestionMobile
@@ -62,6 +68,7 @@ fun ExamTakingScreen(
     var violationKeyError by remember { mutableStateOf<String?>(null) }
 
     // Exam Questions & State
+    var examDetail by remember { mutableStateOf<UjianDetailMobile?>(null) }
     var questions by remember { mutableStateOf<List<UjianQuestionMobile>>(emptyList()) }
     var currentIndex by remember { mutableStateOf(0) }
     var studentAnswers by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
@@ -131,6 +138,7 @@ fun ExamTakingScreen(
         try {
             if (exam.ujianId != null) {
                 val detail = ujianRepository.getUjianDetail(exam.ujianId)
+                examDetail = detail
                 if (detail.questions.isNotEmpty()) {
                     questions = detail.questions
                 } else {
@@ -418,15 +426,30 @@ fun ExamTakingScreen(
                                 colors = CardDefaults.cardColors(containerColor = CardSurface),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
-                                val rawPertanyaan = q.pertanyaan ?: "Pertanyaan tidak memiliki teks."
-                                val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
-                                Text(
-                                    text = formattedPertanyaan,
-                                    fontSize = 15.sp,
-                                    lineHeight = 22.sp,
-                                    color = DarkNavy,
-                                    modifier = Modifier.padding(18.dp)
-                                )
+                                Column(modifier = Modifier.padding(18.dp)) {
+                                    val rawPertanyaan = q.pertanyaan ?: "Pertanyaan tidak memiliki teks."
+                                    val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
+                                    Text(
+                                        text = formattedPertanyaan,
+                                        fontSize = 15.sp,
+                                        lineHeight = 22.sp,
+                                        color = DarkNavy
+                                    )
+
+                                    val targetImageUrl = q.imageUrl?.ifBlank { null }
+                                        ?: q.imageId?.let { id ->
+                                            examDetail?.images?.find { it.id == id }?.url ?: "/api/ujian/images/$id"
+                                        }
+
+                                    if (!targetImageUrl.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(14.dp))
+                                        ExamQuestionImageCard(
+                                            imageUrl = targetImageUrl,
+                                            caption = q.imageCaption,
+                                            ujianRepository = ujianRepository
+                                        )
+                                    }
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -1184,4 +1207,223 @@ private fun generateFallbackQuestions(exam: ExamScheduleItem): List<UjianQuestio
         )
     )
 }
+
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+private fun ExamQuestionImageCard(
+    imageUrl: String,
+    caption: String?,
+    ujianRepository: UjianRepository
+) {
+    var imageBitmap by remember(imageUrl) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+    var isLoading by remember(imageUrl) { mutableStateOf(true) }
+    var hasError by remember(imageUrl) { mutableStateOf(false) }
+    var showZoomDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(imageUrl) {
+        isLoading = true
+        hasError = false
+        try {
+            val bytes = ujianRepository.fetchImageBytes(imageUrl)
+            if (bytes.isNotEmpty()) {
+                imageBitmap = bytes.decodeToImageBitmap()
+            } else {
+                hasError = true
+            }
+        } catch (_: Exception) {
+            hasError = true
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Surface(
+        color = SurfaceVariantColor,
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, BorderStrokeColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val bmp = imageBitmap
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = PrimaryTeal,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Memuat lampiran gambar...",
+                                fontSize = 11.sp,
+                                color = SlateGray
+                            )
+                        }
+                    }
+                }
+                bmp != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showZoomDialog = true }
+                    ) {
+                        Image(
+                            bitmap = bmp,
+                            contentDescription = caption ?: "Gambar Lampiran Soal",
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(CardSurface)
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = DarkNavy.copy(alpha = 0.75f),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Perbesar",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Perbesar",
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    if (!caption.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = caption,
+                            fontSize = 11.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = SlateGray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(90.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = null,
+                                tint = SlateLight,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text(
+                                text = "Lampiran gambar tidak dapat dimuat",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal dialog zoom gambar
+    if (showZoomDialog && imageBitmap != null) {
+        Dialog(onDismissRequest = { showZoomDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .padding(8.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Lampiran Gambar",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = DarkNavy
+                        )
+                        IconButton(
+                            onClick = { showZoomDialog = false },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Tutup",
+                                tint = SlateGray
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Image(
+                        bitmap = imageBitmap!!,
+                        contentDescription = caption ?: "Gambar Lampiran Soal",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 180.dp, max = 420.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+
+                    if (!caption.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = caption,
+                            fontSize = 12.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = SlateGray,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 
