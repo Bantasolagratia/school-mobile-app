@@ -255,7 +255,11 @@ fun UjianMuridScreen(
                         items(upcomingExams) { exam ->
                             ExamCardItem(
                                 exam = exam,
-                                onStartExam = { onStartExam(exam) }
+                                onStartExam = {
+                                    if (exam.studentStatus != "SELESAI") {
+                                        onStartExam(exam)
+                                    }
+                                }
                             )
                         }
                     }
@@ -407,18 +411,34 @@ private fun ExamCardItem(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val isSubmitted = exam.studentStatus == "SELESAI"
+
             // Tombol Mulai Ujian (Fasilitas 6.3)
             Button(
                 onClick = onStartExam,
-                enabled = canStart,
+                enabled = canStart && !isSubmitted,
                 modifier = Modifier.fillMaxWidth().height(46.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryTeal,
-                    disabledContainerColor = SurfaceVariantColor
+                    disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else SurfaceVariantColor
                 )
             ) {
-                if (canStart) {
+                if (isSubmitted) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Ujian Sudah Dikumpulkan",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF059669)
+                    )
+                } else if (canStart) {
                     Icon(
                         Icons.Default.PlayArrow,
                         contentDescription = null,
@@ -453,9 +473,14 @@ private fun ExamCardItem(
 
 /**
  * Fasilitas 6.3: Validasi Waktu Mulai
- * Tombol Mulai Ujian hanya aktif jika waktu server >= jamMulai dan <= jamSelesai.
+ * Tombol Mulai Ujian hanya aktif jika waktu server >= jamMulai dan <= jamSelesai,
+ * serta siswa belum menyelesaikan/mengumpulkan ujian.
  */
 private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, Color> {
+    if (exam.studentStatus == "SELESAI") {
+        return Triple(false, "Sudah Dikerjakan", Color(0xFF059669))
+    }
+
     val tanggal = exam.tanggal ?: ""
     val jamMulai = exam.jamMulai ?: ""
     val jamSelesai = exam.jamSelesai ?: ""

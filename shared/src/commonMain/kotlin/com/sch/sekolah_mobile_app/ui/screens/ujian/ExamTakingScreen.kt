@@ -70,6 +70,8 @@ fun ExamTakingScreen(
     // Heartbeat & Security Lock State
     var isKickedBySupervisor by remember { mutableStateOf(false) }
     var kickMessage by remember { mutableStateOf("") }
+    var isAlreadyFinished by remember { mutableStateOf(false) }
+    var alreadyFinishedMessage by remember { mutableStateOf("") }
 
     // Emergency Exit Key Dialog State (Fasilitas 7.3)
     var showEmergencyDialog by remember { mutableStateOf(false) }
@@ -77,7 +79,7 @@ fun ExamTakingScreen(
     var isVerifyingKey by remember { mutableStateOf(false) }
     var emergencyKeyError by remember { mutableStateOf<String?>(null) }
 
-    ExamKioskEffect(enabled = !isKickedBySupervisor) { _ ->
+    ExamKioskEffect(enabled = !isKickedBySupervisor && !isAlreadyFinished) { _ ->
         violationCount++
         showViolationDialog = true
         if (violationCount >= 2) {
@@ -108,11 +110,22 @@ fun ExamTakingScreen(
                 scheduleId = exam.id,
                 keterangan = "Ujian sedang berlangsung di perangkat mobile"
             )
-            if (!hb.active && hb.action == "KICK") {
-                isKickedBySupervisor = true
-                kickMessage = hb.message ?: "Sesi Anda telah di-reset oleh Guru Pengawas."
+            if (!hb.active) {
+                if (hb.action == "ALREADY_FINISHED") {
+                    isAlreadyFinished = true
+                    alreadyFinishedMessage = hb.message ?: "Anda telah menyelesaikan dan mengumpulkan ujian ini."
+                } else if (hb.action == "KICK") {
+                    isKickedBySupervisor = true
+                    kickMessage = hb.message ?: "Sesi Anda telah di-reset oleh Guru Pengawas."
+                }
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            val msg = e.message ?: ""
+            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true)) {
+                isAlreadyFinished = true
+                alreadyFinishedMessage = msg
+            }
+        }
 
         // 2. Fetch exam questions
         try {
@@ -842,6 +855,47 @@ fun ExamTakingScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
                     ) {
                         Text("Keluar ke Login")
+                    }
+                }
+            )
+        }
+
+        // 3b. Notifikasi Ujian Sudah Dikumpulkan / Selesai
+        if (isAlreadyFinished) {
+            AlertDialog(
+                onDismissRequest = {},
+                icon = {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "Ujian Sudah Selesai",
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy
+                    )
+                },
+                text = {
+                    Text(
+                        text = if (alreadyFinishedMessage.isNotBlank()) alreadyFinishedMessage else "Anda telah mengumpulkan jawaban dan menyelesaikan sesi ujian ini. Ujian tidak dapat dikerjakan kembali.",
+                        fontSize = 13.sp,
+                        color = SlateGray,
+                        lineHeight = 18.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            releaseExamKiosk()
+                            onExamSubmitted()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
+                    ) {
+                        Text("Kembali ke Beranda Ujian")
                     }
                 }
             )
