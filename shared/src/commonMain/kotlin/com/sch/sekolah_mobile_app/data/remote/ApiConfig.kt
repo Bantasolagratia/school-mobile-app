@@ -26,7 +26,7 @@ object ApiConfig {
         storage.setString(KEY_CUSTOM_HOST, clean)
     }
 
-    private fun getBaseUrl(): String {
+    fun getBaseUrl(): String {
         val host = getHost()
         val cleanHost = host.removePrefix("http://").removePrefix("https://")
         return if (cleanHost.contains(":")) {
