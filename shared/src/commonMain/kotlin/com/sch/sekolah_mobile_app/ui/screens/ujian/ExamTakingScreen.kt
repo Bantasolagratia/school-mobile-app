@@ -101,11 +101,10 @@ fun ExamTakingScreen(
 
     // Initial load: Fetch questions and lock session on server
     LaunchedEffect(exam.id) {
-        // 1. Lock session on server (Fasilitas 6.2)
+        // 1. Lock session on server (single hit exam-start, replaces periodic heartbeat)
         try {
-            val hb = ujianRepository.sendHeartbeat(
+            val hb = ujianRepository.examStart(
                 scheduleId = exam.id,
-                status = "MENGERJAKAN",
                 keterangan = "Ujian sedang berlangsung di perangkat mobile"
             )
             if (!hb.active && hb.action == "KICK") {
@@ -133,23 +132,7 @@ fun ExamTakingScreen(
         }
     }
 
-    // Periodic Heartbeat & Session Security Monitoring (Fasilitas 6.2 & 7.2)
-    LaunchedEffect(exam.id) {
-        while (true) {
-            delay(15_000)
-            try {
-                val hb = ujianRepository.sendHeartbeat(
-                    scheduleId = exam.id,
-                    status = "MENGERJAKAN"
-                )
-                if (!hb.active && hb.action == "KICK") {
-                    isKickedBySupervisor = true
-                    kickMessage = hb.message ?: "Sesi ujian Anda telah di-reset oleh Guru Pengawas."
-                    break
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    // Periodic heartbeat removed — replaced by single-hit exam-start/exam-exit endpoints
 
     // Timer Countdown
     LaunchedEffect(Unit) {
@@ -817,7 +800,7 @@ fun ExamTakingScreen(
                             showFinishConfirmation = false
                             coroutineScope.launch {
                                 try {
-                                    ujianRepository.sendHeartbeat(
+                                    ujianRepository.examExit(
                                         scheduleId = exam.id,
                                         status = "SELESAI",
                                         keterangan = "Ujian selesai dikumpulkan oleh murid"

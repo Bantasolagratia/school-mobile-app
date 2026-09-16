@@ -51,8 +51,15 @@ object ApiConfig {
         else "${getBaseUrl()}/api/ujian/schedule/student-upcoming"
     }
 
+    @Deprecated("Use getExamStartUrl() instead", replaceWith = ReplaceWith("getExamStartUrl()"))
     fun getSessionHeartbeatUrl(): String =
-        "${getBaseUrl()}/api/ujian/schedule/session-heartbeat"
+        "${getBaseUrl()}/api/ujian/schedule/exam-start"
+
+    fun getExamStartUrl(): String =
+        "${getBaseUrl()}/api/ujian/schedule/exam-start"
+
+    fun getExamExitUrl(): String =
+        "${getBaseUrl()}/api/ujian/schedule/exam-exit"
 
     fun getVerifyExitKeyUrl(): String =
         "${getBaseUrl()}/api/ujian/schedule/verify-exit-key"
