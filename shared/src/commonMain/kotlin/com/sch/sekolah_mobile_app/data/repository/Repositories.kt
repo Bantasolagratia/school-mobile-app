@@ -154,6 +154,10 @@ class UjianRepository(
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getUjianDetail(token, ujianId)
     }
+
+    suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
+        return apiClient.fetchImageBytes(pathOrUrl)
+    }
 }
 
 class MataPelajaranRepository(

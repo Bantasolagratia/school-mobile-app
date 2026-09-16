@@ -145,13 +145,24 @@ data class ExamScheduleItem(
 }
 
 @Serializable
+data class ExamImageItemMobile(
+    val id: String? = null,
+    val url: String? = null,
+    val filename: String? = null,
+    val size: Long? = 0
+)
+
+@Serializable
 data class UjianQuestionMobile(
     val id: String? = null,
     val type: String? = null,
     val urutan: Int? = 0,
     val pertanyaan: String? = null,
     val pilihan: List<String> = emptyList(),
-    val bobot: Int? = 1
+    val bobot: Int? = 1,
+    val imageUrl: String? = null,
+    val imageId: String? = null,
+    val imageCaption: String? = null
 )
 
 @Serializable
@@ -161,7 +172,8 @@ data class UjianDetailMobile(
     val kodeMapel: String? = null,
     val namaMapel: String? = null,
     val authorName: String? = null,
-    val questions: List<UjianQuestionMobile> = emptyList()
+    val questions: List<UjianQuestionMobile> = emptyList(),
+    val images: List<ExamImageItemMobile> = emptyList()
 )
 
 @Serializable
