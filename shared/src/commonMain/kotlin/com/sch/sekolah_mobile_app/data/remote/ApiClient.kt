@@ -21,6 +21,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
@@ -331,17 +332,41 @@ class ApiClient {
         return response.body()
     }
 
-    suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
-        val fullUrl = if (pathOrUrl.startsWith("http")) {
-            pathOrUrl
-        } else {
-            "${ApiConfig.getBaseUrl()}${if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"}"
+    suspend fun fetchImageBytes(pathOrUrl: String, token: String? = null): ByteArray {
+        val baseUrl = ApiConfig.getBaseUrl()
+        val fullUrl = when {
+            pathOrUrl.startsWith("http://localhost:") || pathOrUrl.startsWith("http://127.0.0.1:") || pathOrUrl.startsWith("http://10.0.2.2:") -> {
+                val afterHost = pathOrUrl.substringAfter("://", "")
+                val path = afterHost.substringAfter("/", "")
+                val clean = if (path.startsWith("api/")) "/$path" else "/api/$path"
+                "$baseUrl$clean"
+            }
+            pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://") -> pathOrUrl
+            else -> {
+                val clean = if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"
+                val apiPath = if (clean.startsWith("/api/")) clean else "/api$clean"
+                "$baseUrl$apiPath"
+            }
         }
-        val response = httpClient.get(fullUrl)
+
+        val response = httpClient.get(fullUrl) {
+            if (!token.isNullOrBlank()) {
+                header("Authorization", "Bearer $token")
+            }
+        }
+
         if (!response.status.isSuccess()) {
-            throw Exception("Gagal memuat gambar (${response.status.value})")
+            throw Exception("Gagal memuat gambar (${response.status.value}): $fullUrl")
         }
-        return response.body()
+
+        val bytes = response.readBytes()
+        if (bytes.size >= 15) {
+            val prefix = bytes.take(15).toByteArray().decodeToString()
+            if (prefix.contains("<!doctype", ignoreCase = true) || prefix.contains("<html", ignoreCase = true)) {
+                throw Exception("Response dari $fullUrl bukan file gambar melainkan halaman HTML fallback")
+            }
+        }
+        return bytes
     }
 }
 

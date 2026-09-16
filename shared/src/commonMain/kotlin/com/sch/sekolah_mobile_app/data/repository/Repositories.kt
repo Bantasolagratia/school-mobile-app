@@ -156,7 +156,8 @@ class UjianRepository(
     }
 
     suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
-        return apiClient.fetchImageBytes(pathOrUrl)
+        val token = authRepository.getAccessToken()
+        return apiClient.fetchImageBytes(pathOrUrl, token)
     }
 }
 
@@ -183,7 +184,8 @@ class MataPelajaranRepository(
     }
 
     suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
-        return apiClient.fetchImageBytes(pathOrUrl)
+        val token = authRepository.getAccessToken()
+        return apiClient.fetchImageBytes(pathOrUrl, token)
     }
 }
 
