@@ -111,6 +111,7 @@ class RemoteConfigManager private constructor() {
 
             // Tangani 304 Not Modified secara terpisah tanpa membaca body!
             if (response.status == HttpStatusCode.NotModified) {
+                loadFromLocalStorage()
                 return
             }
 
@@ -191,6 +192,14 @@ class RemoteConfigManager private constructor() {
                     FLAG_FINAL_GRADE -> {
                         _isFinalGradeEnabled.value = update.isEnabled
                     }
+                }
+                val currentMap = mapOf(
+                    FLAG_RAPORT_MODULE to _isRaportModuleEnabled.value,
+                    FLAG_FINAL_GRADE to _isFinalGradeEnabled.value
+                )
+                storage.setString(STORAGE_KEY_CONFIG, json.encodeToString(currentMap))
+                if (update.etag.isNotBlank()) {
+                    storage.setString(STORAGE_KEY_ETAG, update.etag)
                 }
             } catch (ignored: Exception) {}
         }
