@@ -19,9 +19,10 @@ data class SubjectRaportItem(
     val namaGuru: String = "",
     val kkm: Double = 75.0,
     val categoryBreakdown: List<CategoryGradeItem> = emptyList(),
-    val finalScore: Double = 0.0,
-    val predikat: String = "B",
-    val lulus: Boolean = true
+    val finalScore: Double? = null,
+    val predikat: String? = null,
+    val lulus: Boolean? = true,
+    val status: String = "PUBLISHED"
 )
 
 @Serializable
@@ -45,9 +46,10 @@ data class StudentRaportResponse(
     val startDate: String = "",
     val endDate: String = "",
     val status: String = "IN_PROGRESS",
+    val isFinalGradePublished: Boolean = true,
+    val gradeStatusMessage: String? = null,
     val attendance: AttendanceRecap = AttendanceRecap(),
     val subjects: List<SubjectRaportItem> = emptyList(),
-    val gpa: Double = 0.0,
+    val gpa: Double? = null,
     val generatedAt: String? = null
 )
-
