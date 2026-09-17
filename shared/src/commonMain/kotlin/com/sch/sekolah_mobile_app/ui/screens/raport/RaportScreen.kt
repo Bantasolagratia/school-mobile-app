@@ -26,6 +26,7 @@ import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import com.sch.sekolah_mobile_app.data.model.SubjectRaportItem
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.RaportRepository
+import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -37,12 +38,28 @@ fun RaportScreen(
     onNavigateBack: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
+    val isFinalGradeEnabled by RemoteConfigManager.instance.isFinalGradeEnabled.collectAsState()
+
     var raportData by remember { mutableStateOf<StudentRaportResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var expandedSubjects by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var showEvictionDialog by remember { mutableStateOf(false) }
+
+    // Active Session Eviction (Level 1): Jika modul dimatikan saat siswa sedang membaca rapor
+    LaunchedEffect(isRaportModuleEnabled) {
+        if (!isRaportModuleEnabled) {
+            raportData = null
+            showEvictionDialog = true
+        }
+    }
 
     fun loadRaport() {
+        if (!isRaportModuleEnabled) {
+            showEvictionDialog = true
+            return
+        }
         isLoading = true
         errorMessage = null
         coroutineScope.launch {
@@ -59,6 +76,35 @@ fun RaportScreen(
 
     LaunchedEffect(Unit) {
         loadRaport()
+    }
+
+    if (showEvictionDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Non-dismissible */ },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFFD97706))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Akses Rapor Ditutup", fontWeight = FontWeight.Bold, color = DarkNavy)
+                }
+            },
+            text = {
+                Text(
+                    "Pihak sekolah telah menutup sementara akses lembar rapor untuk verifikasi akademik. Anda akan dialihkan kembali ke Beranda."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showEvictionDialog = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
+                ) {
+                    Text("Kembali ke Beranda")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -141,10 +187,10 @@ fun RaportScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ErrorOutline,
+                                    imageVector = Icons.Default.Lock,
                                     contentDescription = null,
                                     tint = Color(0xFFDC2626),
-                                    modifier = Modifier.size(48.dp)
+                                    modifier = Modifier.size(44.dp)
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
@@ -185,7 +231,7 @@ fun RaportScreen(
 
                         // 2. Metrics (GPA & Kehadiran)
                         item {
-                            RaportMetricsSection(data = data)
+                            RaportMetricsSection(data = data, isFinalGradeEnabled = isFinalGradeEnabled)
                         }
 
                         // 3. Subjects Section Title
@@ -244,6 +290,7 @@ fun RaportScreen(
                                 SubjectGradeCard(
                                     subject = subject,
                                     isExpanded = isExpanded,
+                                    isFinalGradeEnabled = isFinalGradeEnabled,
                                     onToggleExpand = {
                                         expandedSubjects = if (isExpanded) {
                                             expandedSubjects - subject.kodeMapel
@@ -359,7 +406,7 @@ private fun StudentIdentityHeader(data: StudentRaportResponse) {
 }
 
 @Composable
-private fun RaportMetricsSection(data: StudentRaportResponse) {
+private fun RaportMetricsSection(data: StudentRaportResponse, isFinalGradeEnabled: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -380,17 +427,43 @@ private fun RaportMetricsSection(data: StudentRaportResponse) {
                         color = SlateGray
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = ((data.gpa * 10.0).toLong() / 10.0).toString(),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PrimaryTeal
-                    )
-                    Text(
-                        text = "Skala 0 - 100",
-                        fontSize = 11.sp,
-                        color = SlateGray
-                    )
+                    if (isFinalGradeEnabled && data.gpa != null) {
+                        Text(
+                            text = ((data.gpa * 10.0).toLong() / 10.0).toString(),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryTeal
+                        )
+                        Text(
+                            text = "Skala 0 - 100",
+                            fontSize = 11.sp,
+                            color = SlateGray
+                        )
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Menunggu Pleno",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFD97706)
+                            )
+                        }
+                        Text(
+                            text = "Nilai belum dirilis",
+                            fontSize = 11.sp,
+                            color = SlateGray
+                        )
+                    }
                 }
             }
 
@@ -485,8 +558,11 @@ private fun AttendancePill(
 private fun SubjectGradeCard(
     subject: SubjectRaportItem,
     isExpanded: Boolean,
+    isFinalGradeEnabled: Boolean,
     onToggleExpand: () -> Unit
 ) {
+    val isGradeVisible = isFinalGradeEnabled && subject.finalScore != null
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
@@ -507,15 +583,30 @@ private fun SubjectGradeCard(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (subject.lulus) Color(0xFFECFDF5) else Color(0xFFFEF2F2)),
+                        .background(
+                            if (isGradeVisible) {
+                                if (subject.lulus == true) Color(0xFFECFDF5) else Color(0xFFFEF2F2)
+                            } else {
+                                Color(0xFFFEF3C7)
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = subject.predikat,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (subject.lulus) Color(0xFF047857) else Color(0xFFDC2626)
-                    )
+                    if (isGradeVisible && subject.predikat != null) {
+                        Text(
+                            text = subject.predikat,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (subject.lulus == true) Color(0xFF047857) else Color(0xFFDC2626)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Terkunci",
+                            tint = Color(0xFFD97706),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -554,26 +645,52 @@ private fun SubjectGradeCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Final Score & Chevron
+                // Final Score & Status Badge
                 Column(horizontalAlignment = Alignment.End) {
-                    val finalFormatted = ((subject.finalScore * 10.0).toLong() / 10.0).toString()
-                    Text(
-                        text = finalFormatted,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (subject.lulus) Color(0xFF059669) else Color(0xFFDC2626)
-                    )
-                    Surface(
-                        color = if (subject.lulus) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
+                    if (isGradeVisible && subject.finalScore != null) {
+                        val finalFormatted = ((subject.finalScore * 10.0).toLong() / 10.0).toString()
                         Text(
-                            text = if (subject.lulus) "TUNTAS" else "REMIDI",
-                            fontSize = 9.sp,
+                            text = finalFormatted,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (subject.lulus) Color(0xFF166534) else Color(0xFF991B1B),
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            color = if (subject.lulus == true) Color(0xFF059669) else Color(0xFFDC2626)
                         )
+                        Surface(
+                            color = if (subject.lulus == true) Color(0xFFDCFCE7) else Color(0xFFFEE2E2),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = if (subject.lulus == true) "TUNTAS" else "REMIDI",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (subject.lulus == true) Color(0xFF166534) else Color(0xFF991B1B),
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    } else {
+                        Surface(
+                            color = Color(0xFFFEF3C7),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Menunggu Pleno",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFB45309)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -594,61 +711,81 @@ private fun SubjectGradeCard(
                         .background(Color(0xFFF8FAFC))
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Text(
-                        text = "RINCIAN BOBOT KATEGORI UJIAN",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SlateGray,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-
-                    if (subject.categoryBreakdown.isEmpty()) {
+                    if (isGradeVisible) {
                         Text(
-                            text = "Belum ada data kategori ujian.",
-                            fontSize = 12.sp,
-                            color = SlateGray
+                            text = "RINCIAN BOBOT KATEGORI UJIAN",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SlateGray,
+                            modifier = Modifier.padding(bottom = 6.dp)
                         )
-                    } else {
-                        subject.categoryBreakdown.forEach { cat ->
-                            val avgFormatted = ((cat.averageScore * 10.0).toLong() / 10.0).toString()
-                            val weightContrib = ((cat.weightedScore * 10.0).toLong() / 10.0).toString()
 
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "${cat.kategoriNama} (${cat.kategoriKode})",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = DarkNavy
-                                    )
-                                    Text(
-                                        text = "Bobot: ${cat.bobot}% • Diikuti: ${cat.totalExams} ujian",
-                                        fontSize = 10.sp,
-                                        color = SlateGray
-                                    )
-                                }
+                        if (subject.categoryBreakdown.isEmpty()) {
+                            Text(
+                                text = "Belum ada data kategori ujian.",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        } else {
+                            subject.categoryBreakdown.forEach { cat ->
+                                val avgFormatted = ((cat.averageScore * 10.0).toLong() / 10.0).toString()
+                                val weightContrib = ((cat.weightedScore * 10.0).toLong() / 10.0).toString()
 
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "Rata-rata: $avgFormatted",
-                                        fontSize = 11.sp,
-                                        color = DarkNavy
-                                    )
-                                    Text(
-                                        text = "+$weightContrib poin",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = PrimaryTeal
-                                    )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "${cat.kategoriNama} (${cat.kategoriKode})",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = DarkNavy
+                                        )
+                                        Text(
+                                            text = "Bobot: ${cat.bobot}% • Diikuti: ${cat.totalExams} ujian",
+                                            fontSize = 10.sp,
+                                            color = SlateGray
+                                        )
+                                    }
+
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "Rata-rata: $avgFormatted",
+                                            fontSize = 11.sp,
+                                            color = DarkNavy
+                                        )
+                                        Text(
+                                            text = "+$weightContrib poin",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryTeal
+                                        )
+                                    }
                                 }
+                                HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
                             }
-                            HorizontalDivider(color = Color(0xFFE2E8F0), thickness = 0.5.dp)
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = "Rincian nilai disembunyikan sampai sidang pleno dewan guru selesai disahkan.",
+                                fontSize = 11.sp,
+                                color = Color(0xFF92400E)
+                            )
                         }
                     }
                 }

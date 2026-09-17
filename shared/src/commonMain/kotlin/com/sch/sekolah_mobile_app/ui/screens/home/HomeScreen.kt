@@ -12,7 +12,10 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.ui.theme.*
 
 @Composable
@@ -33,6 +37,7 @@ fun HomeScreen(
     onNavigateToMapel: () -> Unit = {},
     onNavigateToRaport: () -> Unit = {}
 ) {
+    val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
     val displayName = profile?.displayName ?: "Siswa"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
@@ -268,13 +273,15 @@ fun HomeScreen(
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
-                    QuickInfoCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.Assessment,
-                        title = "Rapor Semester",
-                        subtitle = "Capaian nilai & presensi",
-                        onClick = onNavigateToRaport
-                    )
+                    if (isRaportModuleEnabled) {
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Assessment,
+                            title = "Rapor Semester",
+                            subtitle = "Capaian nilai & presensi",
+                            onClick = onNavigateToRaport
+                        )
+                    }
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -290,12 +297,18 @@ fun HomeScreen(
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
-                    QuickInfoCard(
-                        icon = Icons.Default.Assessment,
-                        title = "Rapor Semester",
-                        subtitle = "Capaian nilai & presensi",
-                        onClick = onNavigateToRaport
-                    )
+                    AnimatedVisibility(
+                        visible = isRaportModuleEnabled,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        QuickInfoCard(
+                            icon = Icons.Default.Assessment,
+                            title = "Rapor Semester",
+                            subtitle = "Capaian nilai & presensi",
+                            onClick = onNavigateToRaport
+                        )
+                    }
                     QuickInfoCard(
                         icon = Icons.Default.CalendarToday,
                         title = "Jadwal Pelajaran",

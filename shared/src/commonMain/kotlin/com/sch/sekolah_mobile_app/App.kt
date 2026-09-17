@@ -18,6 +18,7 @@ import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
 import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
 import com.sch.sekolah_mobile_app.data.repository.RaportRepository
+import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
@@ -62,6 +63,20 @@ fun App() {
     val mapelRepository = remember { MataPelajaranRepository(authRepository = authRepository) }
     val raportRepository = remember { RaportRepository(authRepository = authRepository) }
 
+    val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
+
+    // Sync remote config dan aktifkan stream SSE saat user terautentikasi
+    LaunchedEffect(authRepository.getAccessToken()) {
+        val token = authRepository.getAccessToken()
+        AppLifecycleObserver.onAppForeground(token)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            AppLifecycleObserver.onAppBackground()
+        }
+    }
+
     var screenState by remember {
         mutableStateOf(if (authRepository.hasActiveSession()) ScreenState.MAIN else ScreenState.LOGIN)
     }
@@ -72,6 +87,13 @@ fun App() {
     var selectedMapel by remember { mutableStateOf<StudentMataPelajaranItem?>(null) }
     var selectedMateri by remember { mutableStateOf<MateriItem?>(null) }
     var selectedMateriId by remember { mutableStateOf<String?>(null) }
+
+    // Route Guard: Evict dari layar raport jika Level 1 dimatikan
+    LaunchedEffect(isRaportModuleEnabled) {
+        if (!isRaportModuleEnabled && currentSubScreen == SubScreen.RAPORT) {
+            currentSubScreen = SubScreen.NONE
+        }
+    }
 
     SekolahMobileTheme {
         Surface(
@@ -222,7 +244,11 @@ fun App() {
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
-                                                onNavigateToRaport = { currentSubScreen = SubScreen.RAPORT },
+                                                onNavigateToRaport = {
+                                                    if (isRaportModuleEnabled) {
+                                                        currentSubScreen = SubScreen.RAPORT
+                                                    }
+                                                },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
@@ -266,7 +292,11 @@ fun App() {
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
-                                                onNavigateToRaport = { currentSubScreen = SubScreen.RAPORT },
+                                                onNavigateToRaport = {
+                                                    if (isRaportModuleEnabled) {
+                                                        currentSubScreen = SubScreen.RAPORT
+                                                    }
+                                                },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
