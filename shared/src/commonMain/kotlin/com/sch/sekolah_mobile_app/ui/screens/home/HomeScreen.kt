@@ -30,7 +30,8 @@ fun HomeScreen(
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit = {},
-    onNavigateToMapel: () -> Unit = {}
+    onNavigateToMapel: () -> Unit = {},
+    onNavigateToRaport: () -> Unit = {}
 ) {
     val displayName = profile?.displayName ?: "Siswa"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
@@ -269,9 +270,10 @@ fun HomeScreen(
                     )
                     QuickInfoCard(
                         modifier = Modifier.weight(1f),
-                        icon = Icons.Default.CalendarToday,
-                        title = "Jadwal Pelajaran",
-                        subtitle = "Lihat agenda kelas mingguan"
+                        icon = Icons.Default.Assessment,
+                        title = "Rapor Semester",
+                        subtitle = "Capaian nilai & presensi",
+                        onClick = onNavigateToRaport
                     )
                 }
             } else {
@@ -287,6 +289,12 @@ fun HomeScreen(
                         title = "Tugas & Ujian",
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
+                    )
+                    QuickInfoCard(
+                        icon = Icons.Default.Assessment,
+                        title = "Rapor Semester",
+                        subtitle = "Capaian nilai & presensi",
+                        onClick = onNavigateToRaport
                     )
                     QuickInfoCard(
                         icon = Icons.Default.CalendarToday,

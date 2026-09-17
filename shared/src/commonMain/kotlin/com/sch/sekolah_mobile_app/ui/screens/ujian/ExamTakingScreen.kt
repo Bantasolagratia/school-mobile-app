@@ -427,28 +427,39 @@ fun ExamTakingScreen(
                                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                             ) {
                                 Column(modifier = Modifier.padding(18.dp)) {
-                                    val rawPertanyaan = q.pertanyaan ?: "Pertanyaan tidak memiliki teks."
-                                    val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
-                                    Text(
-                                        text = formattedPertanyaan,
-                                        fontSize = 15.sp,
-                                        lineHeight = 22.sp,
-                                        color = DarkNavy
-                                    )
-
                                     val targetImageUrl = q.imageUrl?.ifBlank { null }
                                         ?: q.imageId?.let { id ->
                                             examDetail?.images?.find { it.id == id }?.url ?: "/api/ujian/images/$id"
                                         }
 
+                                    // 1. Lampiran Gambar Soal (ditampilkan di bagian atas seperti standar CBT & web editor)
                                     if (!targetImageUrl.isNullOrBlank()) {
-                                        Spacer(modifier = Modifier.height(14.dp))
                                         ExamQuestionImageCard(
                                             imageUrl = targetImageUrl,
                                             caption = q.imageCaption,
                                             ujianRepository = ujianRepository
                                         )
+                                        Spacer(modifier = Modifier.height(14.dp))
                                     }
+
+                                    // 2. Resolusi Teks Pertanyaan
+                                    // Antisipasi jika pertanyaan kosong/blank atau hanya label nomor seperti "Soal 1"
+                                    val isDummyNumbering = q.pertanyaan?.trim()?.matches(Regex("^Soal\\s*\\d+$", RegexOption.IGNORE_CASE)) == true
+                                    val rawPertanyaan = when {
+                                        !q.pertanyaan.isNullOrBlank() && !isDummyNumbering -> q.pertanyaan
+                                        !q.imageCaption.isNullOrBlank() && (q.pertanyaan.isNullOrBlank() || isDummyNumbering) -> q.imageCaption
+                                        !q.pertanyaan.isNullOrBlank() -> q.pertanyaan
+                                        else -> "Perhatikan lampiran gambar di atas untuk menjawab soal ini."
+                                    }
+                                    val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
+
+                                    Text(
+                                        text = formattedPertanyaan,
+                                        fontSize = 15.sp,
+                                        lineHeight = 22.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = DarkNavy
+                                    )
                                 }
                             }
 

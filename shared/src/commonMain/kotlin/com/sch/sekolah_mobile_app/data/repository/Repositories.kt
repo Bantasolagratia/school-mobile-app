@@ -3,6 +3,7 @@ package com.sch.sekolah_mobile_app.data.repository
 import com.sch.sekolah_mobile_app.data.model.Guru
 import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
+import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.remote.ApiClient
 import com.sch.sekolah_mobile_app.data.storage.PlatformStorage
@@ -186,6 +187,17 @@ class MataPelajaranRepository(
     suspend fun fetchImageBytes(pathOrUrl: String): ByteArray {
         val token = authRepository.getAccessToken()
         return apiClient.fetchImageBytes(pathOrUrl, token)
+    }
+}
+
+class RaportRepository(
+    private val authRepository: AuthRepository,
+    private val apiClient: ApiClient = ApiClient()
+) {
+    suspend fun getMyRaport(): StudentRaportResponse {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getMyRaport(token)
     }
 }
 

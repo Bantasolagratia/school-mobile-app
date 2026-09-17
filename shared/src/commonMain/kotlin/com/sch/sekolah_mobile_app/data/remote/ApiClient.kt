@@ -12,6 +12,7 @@ import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatResponse
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
+import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpTimeout
@@ -367,6 +368,25 @@ class ApiClient {
             }
         }
         return bytes
+    }
+
+    suspend fun getMyRaport(token: String): StudentRaportResponse {
+        val url = ApiConfig.getMyRaportUrl()
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat data rapor (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
     }
 }
 
