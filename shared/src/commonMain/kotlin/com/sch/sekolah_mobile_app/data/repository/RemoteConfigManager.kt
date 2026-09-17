@@ -102,9 +102,6 @@ class RemoteConfigManager private constructor() {
                 if (!cachedEtag.isNullOrBlank()) {
                     header(HttpHeaders.IfNoneMatch, cachedEtag)
                 }
-                if (!userToken.isNullOrBlank()) {
-                    header(HttpHeaders.Authorization, "Bearer $userToken")
-                }
                 header("X-Client-Platform", "ANDROID")
                 header("X-App-Version", "1.0.0")
             }
@@ -148,10 +145,11 @@ class RemoteConfigManager private constructor() {
 
                     httpClient.prepareGet(url) {
                         header(HttpHeaders.Accept, "text/event-stream")
-                        if (!userToken.isNullOrBlank()) {
-                            header(HttpHeaders.Authorization, "Bearer $userToken")
-                        }
                     }.execute { httpResponse ->
+                        if (!httpResponse.status.isSuccess()) {
+                            delay(10_000L)
+                            return@execute
+                        }
                         val channel: ByteReadChannel = httpResponse.body()
                         attempt = 0
 
@@ -166,9 +164,11 @@ class RemoteConfigManager private constructor() {
                             }
                         }
                     }
+                    // Jeda aman setelah stream terputus normal (misal timeout 3 menit dari server)
+                    delay(3_000L)
                 } catch (e: Exception) {
                     attempt++
-                    val baseDelay = min(60_000L, 1000L * (1 shl min(attempt, 6)))
+                    val baseDelay = min(60_000L, 2000L * (1 shl min(attempt, 5)))
                     val jitter = Random.nextLong(0, 1000L)
                     delay(baseDelay + jitter)
                 }
