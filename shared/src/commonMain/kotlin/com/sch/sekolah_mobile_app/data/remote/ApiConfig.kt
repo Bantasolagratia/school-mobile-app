@@ -78,4 +78,7 @@ object ApiConfig {
 
     fun getMateriDetailUrl(id: String): String =
         "${getBaseUrl()}/api/materi/$id"
+
+    fun getMyRaportUrl(): String =
+        "${getBaseUrl()}/api/raport/my-raport"
 }

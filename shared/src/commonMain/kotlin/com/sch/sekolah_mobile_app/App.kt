@@ -17,6 +17,7 @@ import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
 import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
+import com.sch.sekolah_mobile_app.data.repository.RaportRepository
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
@@ -25,6 +26,7 @@ import com.sch.sekolah_mobile_app.ui.screens.mapel.MateriDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMapelScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMateriListScreen
 import com.sch.sekolah_mobile_app.ui.screens.profile.ProfileScreen
+import com.sch.sekolah_mobile_app.ui.screens.raport.RaportScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
 import com.sch.sekolah_mobile_app.ui.theme.LightBackground
@@ -42,7 +44,8 @@ enum class SubScreen {
     UJIAN_LIST,
     MAPEL_STUDENT,
     MATERI_LIST,
-    MATERI_DETAIL
+    MATERI_DETAIL,
+    RAPORT
 }
 
 enum class NavigationTab(val label: String, val icon: ImageVector) {
@@ -57,6 +60,7 @@ fun App() {
     val guruRepository = remember { GuruRepository(authRepository = authRepository) }
     val ujianRepository = remember { UjianRepository(authRepository = authRepository) }
     val mapelRepository = remember { MataPelajaranRepository(authRepository = authRepository) }
+    val raportRepository = remember { RaportRepository(authRepository = authRepository) }
 
     var screenState by remember {
         mutableStateOf(if (authRepository.hasActiveSession()) ScreenState.MAIN else ScreenState.LOGIN)
@@ -175,6 +179,14 @@ fun App() {
                             }
                         }
 
+                        SubScreen.RAPORT -> {
+                            RaportScreen(
+                                raportRepository = raportRepository,
+                                profile = currentProfile,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE }
+                            )
+                        }
+
                         SubScreen.NONE -> {
                             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                                 val isTabletOrWide = maxWidth >= 600.dp
@@ -210,6 +222,7 @@ fun App() {
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
+                                                onNavigateToRaport = { currentSubScreen = SubScreen.RAPORT },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
@@ -253,6 +266,7 @@ fun App() {
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
+                                                onNavigateToRaport = { currentSubScreen = SubScreen.RAPORT },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
@@ -279,6 +293,7 @@ private fun MainContent(
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit,
     onNavigateToMapel: () -> Unit,
+    onNavigateToRaport: () -> Unit,
     onLogout: () -> Unit
 ) {
     when (tab) {
@@ -287,7 +302,8 @@ private fun MainContent(
                 profile = profile,
                 onNavigateToGuru = onNavigateToGuru,
                 onNavigateToUjian = onNavigateToUjian,
-                onNavigateToMapel = onNavigateToMapel
+                onNavigateToMapel = onNavigateToMapel,
+                onNavigateToRaport = onNavigateToRaport
             )
         }
         NavigationTab.GURU -> {
