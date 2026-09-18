@@ -19,6 +19,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.CategoryGradeItem
@@ -612,12 +613,18 @@ private fun SubjectGradeCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
                             text = subject.namaMapel,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkNavy
+                            color = DarkNavy,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
@@ -629,6 +636,8 @@ private fun SubjectGradeCard(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = SlateGray,
+                                maxLines = 1,
+                                softWrap = false,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                             )
                         }
@@ -639,7 +648,9 @@ private fun SubjectGradeCard(
                     Text(
                         text = "Guru: ${subject.namaGuru.ifEmpty { "-" }} • KKM: ${subject.kkm}",
                         fontSize = 11.sp,
-                        color = SlateGray
+                        color = SlateGray,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
