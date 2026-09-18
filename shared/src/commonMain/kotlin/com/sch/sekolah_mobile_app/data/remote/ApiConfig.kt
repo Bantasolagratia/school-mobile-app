@@ -84,4 +84,39 @@ object ApiConfig {
 
     fun getMyRaportUrl(): String =
         "${getBaseUrl()}/api/raport/my-raport"
+
+    fun getJadwalListUrl(tanggal: String? = null, kategori: String? = null): String {
+        val params = mutableListOf<String>()
+        if (!tanggal.isNullOrBlank()) params.add("tanggal=$tanggal")
+        if (!kategori.isNullOrBlank()) params.add("kategori=$kategori")
+        val q = if (params.isNotEmpty()) "?${params.joinToString("&")}" else ""
+        return "${getBaseUrl()}/api/jadwal$q"
+    }
+
+    fun getJadwalDetailUrl(id: String): String =
+        "${getBaseUrl()}/api/jadwal/$id"
+
+    fun getGenerateQrUrl(id: String): String =
+        "${getBaseUrl()}/api/jadwal/$id/qr/generate"
+
+    fun getEmergencyPollUrl(nip: String): String =
+        "${getBaseUrl()}/api/jadwal/kiosk/emergency-poll?nip=$nip"
+
+    fun getScanQrUrl(): String =
+        "${getBaseUrl()}/api/absensi/scan-qr"
+
+    fun getAttendanceByScheduleUrl(idJadwal: String): String =
+        "${getBaseUrl()}/api/absensi/jadwal/$idJadwal"
+
+    fun getNotificationsUrl(unreadOnly: Boolean = false): String =
+        "${getBaseUrl()}/api/notifications?unreadOnly=$unreadOnly"
+
+    fun getUnreadNotificationsCountUrl(): String =
+        "${getBaseUrl()}/api/notifications/unread-count"
+
+    fun getMarkNotificationReadUrl(id: String): String =
+        "${getBaseUrl()}/api/notifications/$id/read"
+
+    fun getMarkAllNotificationsReadUrl(): String =
+        "${getBaseUrl()}/api/notifications/read-all"
 }
