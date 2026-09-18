@@ -10,6 +10,11 @@ data class LoginRequest(
 )
 
 @Serializable
+data class RefreshTokenRequest(
+    @SerialName("refresh_token") val refreshToken: String
+)
+
+@Serializable
 data class UserDto(
     val id: String? = null,
     val email: String? = null

@@ -15,3 +15,5 @@ actual fun getCurrentWibDateTime(): Pair<String, String> {
     }
 }
 
+actual fun getCurrentEpochMillis(): Long = System.currentTimeMillis()
+

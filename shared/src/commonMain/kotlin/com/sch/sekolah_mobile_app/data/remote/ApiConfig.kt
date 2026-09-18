@@ -39,6 +39,9 @@ object ApiConfig {
     fun getTokenUrl(): String =
         "${getBaseUrl()}/auth/token?grant_type=password"
 
+    fun getRefreshTokenUrl(): String =
+        "${getBaseUrl()}/auth/token?grant_type=refresh_token"
+
     fun getProfileUrl(): String =
         "${getBaseUrl()}/api/auth-flow/profile"
 

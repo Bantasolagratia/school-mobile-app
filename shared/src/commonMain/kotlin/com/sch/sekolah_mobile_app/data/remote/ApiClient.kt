@@ -13,10 +13,13 @@ import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
+import com.sch.sekolah_mobile_app.data.model.RefreshTokenRequest
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.plugin
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -24,6 +27,8 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
@@ -31,13 +36,28 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class ApiClient {
+class ApiClient(
+    var tokenRefresher: (suspend () -> String?)? = null
+) {
     val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true
     }
 
+    // Dedicated un-intercepted HTTP client for auth token exchanges to prevent recursion
+    private val authHttpClient = HttpClient {
+        install(ContentNegotiation) {
+            json(json)
+        }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 15_000
+            connectTimeoutMillis = 10_000
+            socketTimeoutMillis = 15_000
+        }
+    }
+
+    // Main HTTP client with silent refresh interceptor
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(json)
@@ -49,9 +69,28 @@ class ApiClient {
         }
     }
 
+    init {
+        httpClient.plugin(HttpSend).intercept { request ->
+            val originalCall = execute(request)
+            if (originalCall.response.status == HttpStatusCode.Unauthorized) {
+                val authHeader = request.headers[HttpHeaders.Authorization]
+                val refresher = tokenRefresher
+                if (authHeader != null && refresher != null) {
+                    val newToken = refresher()
+                    if (!newToken.isNullOrBlank()) {
+                        request.headers.remove(HttpHeaders.Authorization)
+                        request.headers.append(HttpHeaders.Authorization, "Bearer $newToken")
+                        return@intercept execute(request)
+                    }
+                }
+            }
+            originalCall
+        }
+    }
+
     suspend fun login(email: String, password: String): SessionResponse {
         val url = ApiConfig.getTokenUrl()
-        val response = httpClient.post(url) {
+        val response = authHttpClient.post(url) {
             contentType(ContentType.Application.Json)
             setBody(LoginRequest(email = email.trim(), password = password))
         }
@@ -59,6 +98,29 @@ class ApiClient {
         if (!response.status.isSuccess()) {
             val responseText = response.bodyAsText()
             var message = "Email atau password tidak valid."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["error_description"]?.jsonPrimitive?.content
+                    ?: jsonTree["msg"]?.jsonPrimitive?.content
+                    ?: jsonTree["message"]?.jsonPrimitive?.content
+                    ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun refreshToken(refreshToken: String): SessionResponse {
+        val url = ApiConfig.getRefreshTokenUrl()
+        val response = authHttpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(RefreshTokenRequest(refreshToken = refreshToken.trim()))
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memperbarui sesi (${response.status.value})"
             try {
                 val jsonTree = json.parseToJsonElement(responseText).jsonObject
                 message = jsonTree["error_description"]?.jsonPrimitive?.content

@@ -20,3 +20,5 @@ actual fun getCurrentWibDateTime(): Pair<String, String> {
     }
 }
 
+actual fun getCurrentEpochMillis(): Long = (platform.Foundation.NSDate().timeIntervalSince1970 * 1000.0).toLong()
+

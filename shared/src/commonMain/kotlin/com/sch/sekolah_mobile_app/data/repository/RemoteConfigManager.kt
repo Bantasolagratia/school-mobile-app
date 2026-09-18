@@ -102,6 +102,9 @@ class RemoteConfigManager private constructor() {
                 if (!cachedEtag.isNullOrBlank()) {
                     header(HttpHeaders.IfNoneMatch, cachedEtag)
                 }
+                if (!userToken.isNullOrBlank()) {
+                    header(HttpHeaders.Authorization, "Bearer $userToken")
+                }
                 header("X-Client-Platform", "ANDROID")
                 header("X-App-Version", "1.0.0")
             }
@@ -145,6 +148,9 @@ class RemoteConfigManager private constructor() {
 
                     httpClient.prepareGet(url) {
                         header(HttpHeaders.Accept, "text/event-stream")
+                        if (!userToken.isNullOrBlank()) {
+                            header(HttpHeaders.Authorization, "Bearer $userToken")
+                        }
                     }.execute { httpResponse ->
                         if (!httpResponse.status.isSuccess()) {
                             delay(10_000L)
@@ -179,6 +185,17 @@ class RemoteConfigManager private constructor() {
     fun stopRealtimeStream() {
         sseJob?.cancel()
         sseJob = null
+    }
+
+    /**
+     * Zero Data Leak: Reset runtime in-memory state & storage flags to safe defaults (fail-closed)
+     */
+    fun resetToSafeDefaults() {
+        stopRealtimeStream()
+        _isRaportModuleEnabled.value = false
+        _isFinalGradeEnabled.value = false
+        storage.remove(STORAGE_KEY_CONFIG)
+        storage.remove(STORAGE_KEY_ETAG)
     }
 
     private fun handleSseMessage(event: String, dataJson: String) {

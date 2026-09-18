@@ -95,6 +95,21 @@ fun App() {
         }
     }
 
+    // Zero Data Leak: Tangani penghentian sesi otomatis (14 hari kedaluwarsa atau silent refresh gagal)
+    LaunchedEffect(Unit) {
+        authRepository.sessionTerminationFlow.collect { _ ->
+            AppLifecycleObserver.onAppBackground()
+            currentProfile = null
+            activeExamItem = null
+            selectedMapel = null
+            selectedMateri = null
+            selectedMateriId = null
+            currentSubScreen = SubScreen.NONE
+            currentTab = NavigationTab.HOME
+            screenState = ScreenState.LOGIN
+        }
+    }
+
     SekolahMobileTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
