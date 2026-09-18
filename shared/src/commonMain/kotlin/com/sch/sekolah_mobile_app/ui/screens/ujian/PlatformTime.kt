@@ -6,3 +6,5 @@ package com.sch.sekolah_mobile_app.ui.screens.ujian
  */
 expect fun getCurrentWibDateTime(): Pair<String, String>
 
+expect fun getCurrentEpochMillis(): Long
+
