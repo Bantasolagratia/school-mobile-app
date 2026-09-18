@@ -55,20 +55,29 @@ data class UserProfileResponse(
     val isRoleMurid: Boolean
         get() = isStudent || roles.contains("MURID")
 
+    val isRoleGuru: Boolean
+        get() = isTeacher || roles.contains("GURU") || identities.any { it.isTeacher || it.role == "GURU" }
+
     val studentIdentity: UserIdentity?
         get() = identities.firstOrNull { it.isStudent || it.role == "MURID" } ?: identities.firstOrNull()
 
+    val teacherIdentity: UserIdentity?
+        get() = identities.firstOrNull { it.isTeacher || it.role == "GURU" } ?: identities.firstOrNull()
+
     val displayName: String
-        get() = studentIdentity?.name?.trim()?.takeIf { it.isNotEmpty() }
+        get() = (if (isRoleGuru) teacherIdentity?.name else studentIdentity?.name)?.trim()?.takeIf { it.isNotEmpty() }
             ?: email?.substringBefore('@')?.takeIf { it.isNotEmpty() }
-            ?: "Siswa"
+            ?: if (isRoleGuru) "Guru" else "Siswa"
 
     val displayDetail: String
-        get() = studentIdentity?.detail?.trim()?.takeIf { it.isNotEmpty() }
-            ?: "Kelas 10-B"
+        get() = (if (isRoleGuru) teacherIdentity?.detail else studentIdentity?.detail)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: if (isRoleGuru) "Dewan Guru" else "Kelas 10-B"
 
     val nis: String
         get() = studentIdentity?.id ?: "-"
+
+    val nip: String
+        get() = teacherIdentity?.id ?: "-"
 }
 
 @Serializable
@@ -95,14 +104,84 @@ data class Guru(
 
 @Serializable
 data class Jadwal(
+    val id: String? = null,
     val idJadwal: String? = null,
     val judulKegiatan: String? = null,
+    val kategori: String? = "MURID",
     val mataPelajaran: String? = null,
     val kelas: String? = null,
     val guru: String? = null,
+    val pengawas: String? = null,
     val ruangan: String? = null,
     val waktu: String? = null,
-    val notes: String? = null
+    val waktuMulai: String? = null,
+    val waktuSelesai: String? = null,
+    val toleransiKeterlambatanMenit: Int? = 15,
+    val status: String? = "TERJADWAL",
+    val notes: String? = null,
+    val createdBy: String? = null
+) {
+    val effectiveId: String
+        get() = id?.takeIf { it.isNotBlank() } ?: idJadwal ?: ""
+
+    val displayTitle: String
+        get() = judulKegiatan?.takeIf { it.isNotBlank() }
+            ?: mataPelajaran?.takeIf { it.isNotBlank() }
+            ?: "Jadwal Kegiatan"
+
+    val isCategoryGuru: Boolean
+        get() = kategori?.equals("GURU", ignoreCase = true) == true
+}
+
+@Serializable
+data class QrPayloadMobile(
+    val token: String,
+    val idJadwal: String? = null,
+    val judulKegiatan: String? = null,
+    val generatedAt: Long = 0,
+    val expiresAt: Long = 0,
+    val refreshIntervalSeconds: Int = 20
+)
+
+@Serializable
+data class ScanQrRequestMobile(
+    val token: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val deviceId: String? = null
+)
+
+@Serializable
+data class AbsensiResultMobile(
+    val id: String? = null,
+    val nomorInduk: String? = null,
+    val namaPeserta: String? = null,
+    val idKegiatan: String? = null,
+    val status: String? = null,
+    val waktuAbsen: String? = null,
+    val tipePeserta: String? = null,
+    val diubahOleh: String? = null,
+    val waktuKoreksi: String? = null,
+    val alasanKoreksi: String? = null
+)
+
+@Serializable
+data class NotificationItemMobile(
+    val id: String,
+    val recipientType: String? = null,
+    val recipientId: String? = null,
+    val title: String,
+    val message: String,
+    val category: String? = null,
+    val referenceId: String? = null,
+    val isRead: Boolean = false,
+    val readAt: String? = null,
+    val createdAt: String? = null
+)
+
+@Serializable
+data class EmergencyPollResponse(
+    val unlocked: Boolean = false
 )
 
 @Serializable

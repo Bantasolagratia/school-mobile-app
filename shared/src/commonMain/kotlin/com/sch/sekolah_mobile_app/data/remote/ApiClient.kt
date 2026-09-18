@@ -14,6 +14,12 @@ import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import com.sch.sekolah_mobile_app.data.model.RefreshTokenRequest
+import com.sch.sekolah_mobile_app.data.model.Jadwal
+import com.sch.sekolah_mobile_app.data.model.QrPayloadMobile
+import com.sch.sekolah_mobile_app.data.model.ScanQrRequestMobile
+import com.sch.sekolah_mobile_app.data.model.AbsensiResultMobile
+import com.sch.sekolah_mobile_app.data.model.NotificationItemMobile
+import com.sch.sekolah_mobile_app.data.model.EmergencyPollResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpSend
@@ -23,6 +29,7 @@ import io.ktor.client.plugins.plugin
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readBytes
@@ -449,6 +456,169 @@ class ApiClient(
         }
 
         return response.body()
+    }
+
+    suspend fun getJadwalList(token: String, tanggal: String? = null, kategori: String? = null): List<Jadwal> {
+        val url = ApiConfig.getJadwalListUrl(tanggal, kategori)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat jadwal (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun getJadwalDetail(token: String, id: String): Jadwal {
+        val url = ApiConfig.getJadwalDetailUrl(id)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat detail jadwal (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun generateAttendanceQr(token: String, id: String): QrPayloadMobile {
+        val url = ApiConfig.getGenerateQrUrl(id)
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal meng-generate token QR (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun pollEmergencyUnlock(token: String, nip: String): EmergencyPollResponse {
+        val url = ApiConfig.getEmergencyPollUrl(nip)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            return EmergencyPollResponse(unlocked = false)
+        }
+        return response.body()
+    }
+
+    suspend fun scanQrCode(token: String, request: ScanQrRequestMobile): AbsensiResultMobile {
+        val url = ApiConfig.getScanQrUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Presensi QR gagal (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun getAttendanceBySchedule(token: String, idJadwal: String): List<AbsensiResultMobile> {
+        val url = ApiConfig.getAttendanceByScheduleUrl(idJadwal)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat data presensi (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun getNotifications(token: String, unreadOnly: Boolean = false): List<NotificationItemMobile> {
+        val url = ApiConfig.getNotificationsUrl(unreadOnly)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat notifikasi (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun getUnreadNotificationsCount(token: String): Long {
+        val url = ApiConfig.getUnreadNotificationsCountUrl()
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) return 0
+        val text = response.bodyAsText()
+        return try {
+            val obj = json.parseToJsonElement(text).jsonObject
+            obj["unreadCount"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    suspend fun markNotificationRead(token: String, id: String): NotificationItemMobile {
+        val url = ApiConfig.getMarkNotificationReadUrl(id)
+        val response = httpClient.put(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal menandai notifikasi dibaca (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun markAllNotificationsRead(token: String) {
+        val url = ApiConfig.getMarkAllNotificationsReadUrl()
+        val response = httpClient.put(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal menandai semua notifikasi dibaca (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
     }
 }
 

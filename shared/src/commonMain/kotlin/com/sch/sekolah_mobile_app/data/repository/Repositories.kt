@@ -5,6 +5,12 @@ import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.model.Jadwal
+import com.sch.sekolah_mobile_app.data.model.QrPayloadMobile
+import com.sch.sekolah_mobile_app.data.model.ScanQrRequestMobile
+import com.sch.sekolah_mobile_app.data.model.AbsensiResultMobile
+import com.sch.sekolah_mobile_app.data.model.NotificationItemMobile
+import com.sch.sekolah_mobile_app.data.model.EmergencyPollResponse
 import com.sch.sekolah_mobile_app.data.remote.ApiClient
 import com.sch.sekolah_mobile_app.data.storage.PlatformStorage
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
@@ -90,22 +96,24 @@ class AuthRepository(
         storage.setString(KEY_LAST_LOGIN_MS, getCurrentEpochMillis().toString())
 
         val profile = apiClient.fetchProfile(token)
-        if (!profile.isRoleMurid) {
+        if (!profile.isRoleMurid && !profile.isRoleGuru) {
             logout()
-            throw IllegalStateException("Akses ditolak: Akun ini bukan akun Murid/Siswa.")
+            throw IllegalStateException("Akses ditolak: Akun ini bukan akun Murid atau Guru.")
         }
 
-        // Validasi aturan Single Active User saat Ujian aktif:
-        try {
-            val heartbeat = apiClient.sendSessionHeartbeat(token)
-            if (!heartbeat.active && heartbeat.action == "BLOCKED") {
-                logout()
-                throw IllegalStateException(heartbeat.message ?: "Akun ini sedang aktif dalam sesi ujian di perangkat lain. Silakan hubungi Guru Pengawas untuk melakukan Reset Sesi / Kick jika Anda ingin berganti perangkat.")
-            }
-        } catch (e: Exception) {
-            if (e.message?.contains("aktif dalam sesi ujian") == true) {
-                logout()
-                throw e
+        if (profile.isRoleMurid) {
+            // Validasi aturan Single Active User saat Ujian aktif:
+            try {
+                val heartbeat = apiClient.sendSessionHeartbeat(token)
+                if (!heartbeat.active && heartbeat.action == "BLOCKED") {
+                    logout()
+                    throw IllegalStateException(heartbeat.message ?: "Akun ini sedang aktif dalam sesi ujian di perangkat lain. Silakan hubungi Guru Pengawas untuk melakukan Reset Sesi / Kick jika Anda ingin berganti perangkat.")
+                }
+            } catch (e: Exception) {
+                if (e.message?.contains("aktif dalam sesi ujian") == true) {
+                    logout()
+                    throw e
+                }
             }
         }
 
@@ -291,6 +299,76 @@ class RaportRepository(
         val token = authRepository.getAccessToken()
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getMyRaport(token)
+    }
+}
+
+class JadwalRepository(
+    private val authRepository: AuthRepository,
+    private val apiClient: ApiClient = authRepository.apiClient
+) {
+    suspend fun getSchedules(tanggal: String? = null, kategori: String? = null): List<Jadwal> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getJadwalList(token, tanggal, kategori)
+    }
+
+    suspend fun getScheduleDetail(id: String): Jadwal {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getJadwalDetail(token, id)
+    }
+
+    suspend fun generateAttendanceQr(id: String): QrPayloadMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.generateAttendanceQr(token, id)
+    }
+
+    suspend fun pollEmergencyUnlock(nip: String): EmergencyPollResponse {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.pollEmergencyUnlock(token, nip)
+    }
+
+    suspend fun scanQrCode(tokenStr: String, latitude: Double? = null, longitude: Double? = null): AbsensiResultMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        val req = ScanQrRequestMobile(token = tokenStr, latitude = latitude, longitude = longitude)
+        return apiClient.scanQrCode(token, req)
+    }
+
+    suspend fun getAttendanceList(idJadwal: String): List<AbsensiResultMobile> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getAttendanceBySchedule(token, idJadwal)
+    }
+}
+
+class NotificationRepository(
+    private val authRepository: AuthRepository,
+    private val apiClient: ApiClient = authRepository.apiClient
+) {
+    suspend fun getNotifications(unreadOnly: Boolean = false): List<NotificationItemMobile> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getNotifications(token, unreadOnly)
+    }
+
+    suspend fun getUnreadCount(): Long {
+        val token = authRepository.getAccessToken() ?: return 0
+        return apiClient.getUnreadNotificationsCount(token)
+    }
+
+    suspend fun markAsRead(id: String): NotificationItemMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.markNotificationRead(token, id)
+    }
+
+    suspend fun markAllAsRead() {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        apiClient.markAllNotificationsRead(token)
     }
 }
 

@@ -35,12 +35,17 @@ fun HomeScreen(
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit = {},
     onNavigateToMapel: () -> Unit = {},
-    onNavigateToRaport: () -> Unit = {}
+    onNavigateToRaport: () -> Unit = {},
+    onNavigateToJadwal: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    unreadNotifCount: Long = 0
 ) {
     val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
-    val displayName = profile?.displayName ?: "Siswa"
-    val displayDetail = profile?.displayDetail ?: "Kelas 10-B"
+    val isGuru = profile?.isRoleGuru == true
+    val displayName = profile?.displayName ?: if (isGuru) "Guru" else "Siswa"
+    val displayDetail = profile?.displayDetail ?: if (isGuru) "Dewan Guru" else "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
+    val nip = profile?.nip ?: "-"
 
     BoxWithConstraints(
         modifier = Modifier
@@ -61,33 +66,56 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Halo, $displayName 👋",
+                        text = if (isGuru) "Halo, $displayName 👨‍🏫" else "Halo, $displayName 👋",
                         fontSize = if (isWideScreen) 26.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkNavy
                     )
                     Text(
-                        text = "Selamat datang di Portal Siswa",
+                        text = if (isGuru) "Selamat datang di Portal Dewan Guru" else "Selamat datang di Portal Siswa",
                         fontSize = 13.sp,
                         color = SlateGray
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryTealContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.School,
-                        contentDescription = null,
-                        tint = PrimaryTeal,
-                        modifier = Modifier.size(24.dp)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onNavigateToNotifications) {
+                        BadgedBox(
+                            badge = {
+                                if (unreadNotifCount > 0) {
+                                    Badge(containerColor = ErrorRed) {
+                                        Text("$unreadNotifCount")
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Pusat Notifikasi",
+                                tint = PrimaryTeal,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(4.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(PrimaryTealContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isGuru) Icons.Default.PersonOutline else Icons.Default.School,
+                            contentDescription = null,
+                            tint = PrimaryTeal,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
 
@@ -116,7 +144,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "KARTU PELAJAR DIGITAL",
+                                text = if (isGuru) "KARTU IDENTITAS GURU" else "KARTU PELAJAR DIGITAL",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White.copy(alpha = 0.8f),
@@ -127,7 +155,7 @@ fun HomeScreen(
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = "MURID AKTIF",
+                                    text = if (isGuru) "GURU AKTIF" else "MURID AKTIF",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkNavy,
@@ -152,11 +180,11 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                Text(nis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(if (isGuru) nip else nis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                             }
                             Column {
-                                Text("KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
                                 Text(displayDetail, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
                             }
                             Column {
@@ -268,6 +296,13 @@ fun HomeScreen(
                     )
                     QuickInfoCard(
                         modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CalendarToday,
+                        title = if (isGuru) "Jadwal Mengajar" else "Jadwal Pelajaran",
+                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Lihat agenda kelas mingguan",
+                        onClick = onNavigateToJadwal
+                    )
+                    QuickInfoCard(
+                        modifier = Modifier.weight(1f),
                         icon = Icons.AutoMirrored.Filled.Assignment,
                         title = "Tugas & Ujian",
                         subtitle = "Status pengerjaan & jadwal ujian",
@@ -292,6 +327,12 @@ fun HomeScreen(
                         onClick = onNavigateToMapel
                     )
                     QuickInfoCard(
+                        icon = Icons.Default.CalendarToday,
+                        title = if (isGuru) "Jadwal Mengajar" else "Jadwal Pelajaran",
+                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Lihat agenda kelas mingguan",
+                        onClick = onNavigateToJadwal
+                    )
+                    QuickInfoCard(
                         icon = Icons.AutoMirrored.Filled.Assignment,
                         title = "Tugas & Ujian",
                         subtitle = "Status pengerjaan & jadwal ujian",
@@ -309,11 +350,6 @@ fun HomeScreen(
                             onClick = onNavigateToRaport
                         )
                     }
-                    QuickInfoCard(
-                        icon = Icons.Default.CalendarToday,
-                        title = "Jadwal Pelajaran",
-                        subtitle = "Lihat agenda kelas mingguan"
-                    )
                 }
             }
 
