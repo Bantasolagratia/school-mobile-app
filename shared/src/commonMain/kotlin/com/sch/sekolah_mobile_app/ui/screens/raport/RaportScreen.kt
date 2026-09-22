@@ -756,8 +756,9 @@ private fun SubjectGradeCard(
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkNavy
                                         )
+                                        val registeredText = if (cat.totalRegistered > 0) "${cat.totalExams}/${cat.totalRegistered}" else "${cat.totalExams}"
                                         Text(
-                                            text = "Bobot: ${cat.bobot}% • Diikuti: ${cat.totalExams} ujian",
+                                            text = "Bobot: ${cat.bobot}% • Diikuti: $registeredText ujian",
                                             fontSize = 10.sp,
                                             color = SlateGray
                                         )

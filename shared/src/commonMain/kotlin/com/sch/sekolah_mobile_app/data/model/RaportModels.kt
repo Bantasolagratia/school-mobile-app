@@ -9,7 +9,8 @@ data class CategoryGradeItem(
     val bobot: Double = 0.0,
     val averageScore: Double = 0.0,
     val weightedScore: Double = 0.0,
-    val totalExams: Int = 0
+    val totalExams: Int = 0,
+    val totalRegistered: Int = 0
 )
 
 @Serializable
