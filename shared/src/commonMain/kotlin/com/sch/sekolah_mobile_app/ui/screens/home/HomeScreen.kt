@@ -27,7 +27,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
+import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @Composable
 fun HomeScreen(
@@ -40,6 +44,10 @@ fun HomeScreen(
     onNavigateToNotifications: () -> Unit = {},
     unreadNotifCount: Long = 0
 ) {
+    val platformStorage = remember { getPlatformStorage() }
+    var isSensitiveInfoMasked by remember {
+        mutableStateOf(platformStorage.getString("pref_mask_sensitive_info", "false") == "true")
+    }
     val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
     val isGuru = profile?.isRoleGuru == true
     val displayName = profile?.displayName ?: if (isGuru) "Guru" else "Siswa"
@@ -180,8 +188,27 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                Text(if (isGuru) nip else nis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
+                                        tint = Color.White.copy(alpha = 0.8f),
+                                        modifier = Modifier
+                                            .size(13.dp)
+                                            .clickable {
+                                                isSensitiveInfoMasked = !isSensitiveInfoMasked
+                                                platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                                            }
+                                    )
+                                }
+                                Text(
+                                    text = if (isSensitiveInfoMasked) "****" else (if (isGuru) nip else nis),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
                             }
                             Column {
                                 Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))

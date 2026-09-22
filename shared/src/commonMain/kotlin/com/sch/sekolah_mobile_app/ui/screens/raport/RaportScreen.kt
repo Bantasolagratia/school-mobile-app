@@ -28,6 +28,7 @@ import com.sch.sekolah_mobile_app.data.model.SubjectRaportItem
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.RaportRepository
 import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
+import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -322,6 +323,11 @@ fun RaportScreen(
 
 @Composable
 private fun StudentIdentityHeader(data: StudentRaportResponse) {
+    val platformStorage = remember { getPlatformStorage() }
+    var isSensitiveInfoMasked by remember {
+        mutableStateOf(platformStorage.getString("pref_mask_sensitive_info", "false") == "true")
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -380,8 +386,27 @@ private fun StudentIdentityHeader(data: StudentRaportResponse) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.65f))
-                        Text(data.nis, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.65f))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (isSensitiveInfoMasked) "Tampilkan NIS" else "Sembunyikan NIS",
+                                tint = Color.White.copy(alpha = 0.75f),
+                                modifier = Modifier
+                                    .size(13.dp)
+                                    .clickable {
+                                        isSensitiveInfoMasked = !isSensitiveInfoMasked
+                                        platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                                    }
+                            )
+                        }
+                        Text(
+                            text = if (isSensitiveInfoMasked) "****" else data.nis,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
                     }
                     Column {
                         Text("KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.65f))

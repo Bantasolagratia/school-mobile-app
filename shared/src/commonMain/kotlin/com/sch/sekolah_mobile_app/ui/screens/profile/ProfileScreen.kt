@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
+import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
 
 @Composable
@@ -29,6 +30,10 @@ fun ProfileScreen(
     profile: UserProfileResponse?,
     onLogout: () -> Unit
 ) {
+    val platformStorage = remember { getPlatformStorage() }
+    var isSensitiveInfoMasked by remember {
+        mutableStateOf(platformStorage.getString("pref_mask_sensitive_info", "false") == "true")
+    }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val displayName = profile?.displayName ?: "Siswa"
@@ -104,7 +109,27 @@ fun ProfileScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
-                ProfileInfoRow(icon = Icons.Default.Badge, label = "Nomor Induk Siswa (NIS)", value = nis)
+                ProfileInfoRow(
+                    icon = Icons.Default.Badge,
+                    label = "Nomor Induk Siswa (NIS)",
+                    value = if (isSensitiveInfoMasked) "****" else nis,
+                    trailingAction = {
+                        IconButton(
+                            onClick = {
+                                isSensitiveInfoMasked = !isSensitiveInfoMasked
+                                platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (isSensitiveInfoMasked) "Tampilkan NIS" else "Sembunyikan NIS",
+                                tint = SlateGray,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
                 ProfileInfoRow(icon = Icons.Default.Email, label = "Email Akun", value = email)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
@@ -172,7 +197,8 @@ fun ProfileScreen(
 private fun ProfileInfoRow(
     icon: ImageVector,
     label: String,
-    value: String
+    value: String,
+    trailingAction: (@Composable () -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -188,6 +214,9 @@ private fun ProfileInfoRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label, fontSize = 11.sp, color = SlateGray)
             Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DarkNavy)
+        }
+        if (trailingAction != null) {
+            trailingAction()
         }
     }
 }
