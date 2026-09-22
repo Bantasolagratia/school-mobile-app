@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.Guru
+import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
 import com.sch.sekolah_mobile_app.data.storage.copyToClipboard
 import com.sch.sekolah_mobile_app.ui.theme.*
@@ -31,6 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun GuruModuleScreen(
     guruRepository: GuruRepository,
+    profile: UserProfileResponse? = null,
     onNavigateBack: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -40,6 +42,13 @@ fun GuruModuleScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedGuru by remember { mutableStateOf<Guru?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    fun canViewGuruNip(targetGuruNip: String): Boolean {
+        if (profile == null) return false
+        if (profile.isAdmin) return true
+        if (profile.isRoleGuru && profile.nip == targetGuruNip) return true
+        return false
+    }
 
     fun loadData() {
         isLoading = true
@@ -67,7 +76,6 @@ fun GuruModuleScreen(
             val q = searchKeyword.trim().lowercase()
             guruList.filter {
                 it.nama.lowercase().contains(q) ||
-                it.nip.lowercase().contains(q) ||
                 (it.jabatan?.lowercase()?.contains(q) == true)
             }
         }
@@ -119,7 +127,7 @@ fun GuruModuleScreen(
                         value = searchKeyword,
                         onValueChange = { searchKeyword = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Cari berdasarkan nama, NIP, atau mata pelajaran...") },
+                        placeholder = { Text("Cari berdasarkan nama atau mata pelajaran...") },
                         leadingIcon = {
                             Icon(Icons.Default.Search, contentDescription = "Search", tint = SlateGray)
                         },
@@ -285,12 +293,14 @@ fun GuruModuleScreen(
                                                 )
                                             }
 
-                                            // NIP badge
-                                            Text(
-                                                text = "NIP ${guru.nip}",
-                                                fontSize = 11.sp,
-                                                color = SlateGray
-                                            )
+                                            // NIP badge (hanya tampil untuk admin atau pemilik identitas)
+                                            if (canViewGuruNip(guru.nip)) {
+                                                Text(
+                                                    text = "NIP ${guru.nip}",
+                                                    fontSize = 11.sp,
+                                                    color = SlateGray
+                                                )
+                                            }
                                         }
                                     }
 
@@ -354,11 +364,13 @@ fun GuruModuleScreen(
                             color = PrimaryTeal,
                             fontWeight = FontWeight.Medium
                         )
-                        Text(
-                            text = "NIP: ${guru.nip}",
-                            fontSize = 12.sp,
-                            color = SlateGray
-                        )
+                        if (canViewGuruNip(guru.nip)) {
+                            Text(
+                                text = "NIP: ${guru.nip}",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        }
                     }
                 }
 

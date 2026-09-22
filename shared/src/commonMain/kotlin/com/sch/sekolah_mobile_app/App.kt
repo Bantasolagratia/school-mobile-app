@@ -442,6 +442,7 @@ private fun MainContent(
         NavigationTab.GURU -> {
             GuruModuleScreen(
                 guruRepository = guruRepository,
+                profile = profile,
                 onNavigateBack = null
             )
         }
