@@ -243,7 +243,9 @@ data class UjianQuestionMobile(
     val urutan: Int? = 0,
     val pertanyaan: String? = null,
     val pilihan: List<String> = emptyList(),
-    val bobot: Int? = 1,
+    val bobot: Double? = 1.0,
+    val maxPoints: Double? = null,
+    val catatan: String? = null,
     val imageUrl: String? = null,
     val imageId: String? = null,
     val imageCaption: String? = null

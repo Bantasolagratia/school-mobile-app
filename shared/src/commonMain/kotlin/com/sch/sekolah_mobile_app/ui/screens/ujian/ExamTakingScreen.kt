@@ -147,7 +147,9 @@ fun ExamTakingScreen(
             } else {
                 questions = generateFallbackQuestions(exam)
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            println("[ExamTakingScreen] Failed to load exam detail: ${e.message}")
+            e.printStackTrace()
             questions = generateFallbackQuestions(exam)
         } finally {
             isLoadingQuestions = false
