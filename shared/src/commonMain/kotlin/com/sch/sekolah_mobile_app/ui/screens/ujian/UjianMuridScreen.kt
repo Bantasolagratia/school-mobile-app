@@ -412,6 +412,7 @@ private fun ExamCardItem(
             Spacer(modifier = Modifier.height(16.dp))
 
             val isSubmitted = exam.studentStatus == "SELESAI"
+            val isDianulir = exam.studentStatus == "DIANULIR"
 
             // Tombol Mulai Ujian (Fasilitas 6.3)
             Button(
@@ -420,7 +421,7 @@ private fun ExamCardItem(
                 modifier = Modifier.fillMaxWidth().height(46.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryTeal,
+                    containerColor = if (isDianulir) Color(0xFFD97706) else PrimaryTeal,
                     disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else SurfaceVariantColor
                 )
             ) {
@@ -437,6 +438,19 @@ private fun ExamCardItem(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF059669)
+                    )
+                } else if (isDianulir && canStart) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Ujian Ulang Sekarang",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
                     )
                 } else if (canStart) {
                     Icon(
@@ -460,7 +474,7 @@ private fun ExamCardItem(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (statusBadge == "Selesai") "Ujian Telah Berakhir" else "Terkunci (Belum Jam Mulai)",
+                        text = if (statusBadge.contains("Selesai")) "Ujian Telah Berakhir" else "Terkunci (Belum Jam Mulai)",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = SlateGray
@@ -481,6 +495,7 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
         return Triple(false, "Sudah Dikerjakan", Color(0xFF059669))
     }
 
+    val isDianulir = exam.studentStatus == "DIANULIR"
     val tanggal = exam.tanggal ?: ""
     val jamMulai = exam.jamMulai ?: ""
     val jamSelesai = exam.jamSelesai ?: ""
@@ -490,22 +505,22 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
         val (todayStr, nowTimeStr) = getCurrentWibDateTime()
 
         if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal < todayStr) {
-            Triple(false, "Selesai", Color(0xFF6B7280))
+            Triple(false, if (isDianulir) "Dianulir (Selesai)" else "Selesai", Color(0xFF6B7280))
         } else if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal > todayStr) {
-            Triple(false, "Mendatang", PrimaryTeal)
+            Triple(false, if (isDianulir) "Ujian Ulang Mendatang" else "Mendatang", if (isDianulir) Color(0xFFD97706) else PrimaryTeal)
         } else {
             // Hari ini
             if (nowTimeStr.isNotEmpty() && jamMulai.isNotBlank() && nowTimeStr < jamMulai) {
                 Triple(false, "Mulai $jamMulai WIB", Color(0xFFD97706))
             } else if (nowTimeStr.isNotEmpty() && jamSelesai.isNotBlank() && nowTimeStr > jamSelesai) {
-                Triple(false, "Selesai", Color(0xFF6B7280))
+                Triple(false, if (isDianulir) "Dianulir (Selesai)" else "Selesai", Color(0xFF6B7280))
             } else {
-                Triple(true, "Siap Dikerjakan", Color(0xFF059669))
+                Triple(true, if (isDianulir) "Dianulir (Ujian Ulang)" else "Siap Dikerjakan", if (isDianulir) Color(0xFFD97706) else Color(0xFF059669))
             }
         }
     } catch (_: Exception) {
         // Fallback jika error
-        Triple(true, "Aktif", Color(0xFF059669))
+        Triple(true, if (isDianulir) "Dianulir (Ujian Ulang)" else "Aktif", if (isDianulir) Color(0xFFD97706) else Color(0xFF059669))
     }
 }
 
