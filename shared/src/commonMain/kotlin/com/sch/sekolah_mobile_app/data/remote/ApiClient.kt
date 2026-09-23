@@ -304,9 +304,9 @@ class ApiClient(
 
     suspend fun submitExam(
         token: String,
-        scheduleId: String,
-        durationSeconds: Long,
-        answers: Map<String, String>
+        scheduleId: String? = null,
+        durationSeconds: Long = 0,
+        answers: Map<String, String> = emptyMap()
     ): SubmitExamResponseMobile {
         val url = ApiConfig.getSubmitExamUrl()
         val response = httpClient.post(url) {

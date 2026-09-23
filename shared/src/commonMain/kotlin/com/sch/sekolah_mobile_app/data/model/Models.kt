@@ -262,7 +262,7 @@ data class UjianDetailMobile(
 
 @Serializable
 data class SubmitExamRequestMobile(
-    val scheduleId: String,
+    val scheduleId: String? = null,
     val durationSeconds: Long = 0,
     val answers: Map<String, String> = emptyMap()
 )
