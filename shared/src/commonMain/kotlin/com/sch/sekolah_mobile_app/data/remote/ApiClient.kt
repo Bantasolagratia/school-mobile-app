@@ -11,6 +11,8 @@ import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatRequest
 import com.sch.sekolah_mobile_app.data.model.SessionHeartbeatResponse
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.MateriItem
+import com.sch.sekolah_mobile_app.data.model.SubmitExamRequestMobile
+import com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.StudentRaportResponse
 import com.sch.sekolah_mobile_app.data.model.RefreshTokenRequest
@@ -298,6 +300,32 @@ class ApiClient(
             setBody(SessionHeartbeatRequest(scheduleId = scheduleId, status = status, keterangan = keterangan))
         }
         return response.status.isSuccess()
+    }
+
+    suspend fun submitExam(
+        token: String,
+        scheduleId: String,
+        durationSeconds: Long,
+        answers: Map<String, String>
+    ): SubmitExamResponseMobile {
+        val url = ApiConfig.getSubmitExamUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(SubmitExamRequestMobile(scheduleId = scheduleId, durationSeconds = durationSeconds, answers = answers))
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengumpulkan ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
     }
 
     suspend fun verifyEmergencyExitKey(

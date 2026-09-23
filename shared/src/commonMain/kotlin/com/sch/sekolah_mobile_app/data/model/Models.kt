@@ -261,6 +261,23 @@ data class UjianDetailMobile(
 )
 
 @Serializable
+data class SubmitExamRequestMobile(
+    val scheduleId: String,
+    val durationSeconds: Long = 0,
+    val answers: Map<String, String> = emptyMap()
+)
+
+@Serializable
+data class SubmitExamResponseMobile(
+    val resultId: String? = null,
+    val scheduleId: String? = null,
+    val score: Double = 0.0,
+    val status: String? = null,
+    val hasUngradedEssay: Boolean = false,
+    val message: String? = null
+)
+
+@Serializable
 data class EmergencyExitVerifyRequest(
     val scheduleId: String,
     val kelas: String? = null,
