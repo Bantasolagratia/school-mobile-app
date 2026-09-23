@@ -64,6 +64,9 @@ object ApiConfig {
     fun getExamExitUrl(): String =
         "${getBaseUrl()}/api/ujian/schedule/exam-exit"
 
+    fun getSubmitExamUrl(): String =
+        "${getBaseUrl()}/api/ujian/result/submit"
+
     fun getVerifyExitKeyUrl(): String =
         "${getBaseUrl()}/api/ujian/schedule/verify-exit-key"
 

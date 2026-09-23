@@ -963,12 +963,30 @@ fun ExamTakingScreen(
                             showFinishConfirmation = false
                             coroutineScope.launch {
                                 try {
-                                    ujianRepository.examExit(
+                                    val mappedAnswers = mutableMapOf<String, String>()
+                                    questions.forEachIndexed { idx, q ->
+                                        val ans = studentAnswers[idx]
+                                        if (ans != null) {
+                                            val key = q.id ?: (idx + 1).toString()
+                                            mappedAnswers[key] = ans
+                                            mappedAnswers[(idx + 1).toString()] = ans
+                                        }
+                                    }
+                                    val elapsed = (90 * 60 - remainingSeconds).toLong().coerceAtLeast(0L)
+                                    ujianRepository.submitExam(
                                         scheduleId = exam.id,
-                                        status = "SELESAI",
-                                        keterangan = "Ujian selesai dikumpulkan oleh murid"
+                                        durationSeconds = elapsed,
+                                        answers = mappedAnswers
                                     )
-                                } catch (_: Exception) {}
+                                } catch (_: Exception) {
+                                    try {
+                                        ujianRepository.examExit(
+                                            scheduleId = exam.id,
+                                            status = "SELESAI",
+                                            keterangan = "Ujian selesai dikumpulkan oleh murid"
+                                        )
+                                    } catch (_: Exception) {}
+                                }
                                 releaseExamKiosk()
                                 onExamSubmitted()
                             }
