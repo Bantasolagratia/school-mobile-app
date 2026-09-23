@@ -974,7 +974,7 @@ fun ExamTakingScreen(
                                     }
                                     val elapsed = (90 * 60 - remainingSeconds).toLong().coerceAtLeast(0L)
                                     ujianRepository.submitExam(
-                                        scheduleId = exam.id,
+                                        scheduleId = exam.id ?: "",
                                         durationSeconds = elapsed,
                                         answers = mappedAnswers
                                     )

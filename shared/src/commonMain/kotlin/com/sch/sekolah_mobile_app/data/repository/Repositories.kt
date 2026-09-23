@@ -242,9 +242,9 @@ class UjianRepository(
     }
 
     suspend fun submitExam(
-        scheduleId: String,
-        durationSeconds: Long,
-        answers: Map<String, String>
+        scheduleId: String? = null,
+        durationSeconds: Long = 0,
+        answers: Map<String, String> = emptyMap()
     ): com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile {
         val token = authRepository.getAccessToken()
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
