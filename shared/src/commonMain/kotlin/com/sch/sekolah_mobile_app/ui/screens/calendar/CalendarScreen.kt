@@ -269,16 +269,22 @@ fun CalendarScreen(
                                                 )
 
                                                 // Schedule dot indicators
-                                                Row(
-                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                                    modifier = Modifier.padding(top = 2.dp)
-                                                ) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(4.dp)
-                                                            .clip(CircleShape)
-                                                            .background(if (isSelected) Color.White else PrimaryTeal)
-                                                    )
+                                                val dayDateStr = "$currentYear-${currentMonth.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}"
+                                                val hasSchedule = allSchedules.any { j ->
+                                                    j.waktuMulai?.startsWith(dayDateStr) == true || j.waktu?.startsWith(dayDateStr) == true
+                                                }
+                                                if (hasSchedule) {
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                        modifier = Modifier.padding(top = 2.dp)
+                                                    ) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(4.dp)
+                                                                .clip(CircleShape)
+                                                                .background(if (isSelected) Color.White else PrimaryTeal)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
