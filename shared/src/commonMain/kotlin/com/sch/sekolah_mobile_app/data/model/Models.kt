@@ -354,4 +354,76 @@ data class MateriItem(
     val updatedAt: String? = null
 )
 
+@Serializable
+data class StudentExamHistoryItemMobile(
+    val scheduleId: String? = null,
+    val resultId: String? = null,
+    val ujianId: String? = null,
+    val judulUjian: String? = null,
+    val tanggal: String? = null,
+    val jamMulai: String? = null,
+    val jamSelesai: String? = null,
+    val kategoriKode: String? = null,
+    val status: String? = null,
+    val score: Double? = null,
+    val isAttended: Boolean = false,
+    val isReviewAllowed: Boolean = false,
+    val hasUngradedEssay: Boolean = false,
+    val submittedAt: String? = null
+)
+
+@Serializable
+data class StudentSubjectExamHistoryResponseMobile(
+    val kodeMapel: String? = null,
+    val namaMapel: String? = null,
+    val nis: String? = null,
+    val namaMurid: String? = null,
+    val kelas: String? = null,
+    val exams: List<StudentExamHistoryItemMobile> = emptyList()
+)
+
+@Serializable
+data class QuestionFeedbackMobile(
+    val questionId: String? = null,
+    val urutan: Int = 0,
+    val type: String? = null,
+    val pertanyaan: String? = null,
+    val pilihan: List<String>? = emptyList(),
+    val imageId: String? = null,
+    val imageUrl: String? = null,
+    val imageCaption: String? = null,
+    val catatan: String? = null,
+    val studentAnswer: String? = null,
+    val correctAnswer: String? = null,
+    val isCorrect: Boolean = false,
+    val scoreObtained: Double = 0.0,
+    val maxScore: Double = 0.0,
+    val teacherScore: Double? = null,
+    val teacherNotes: String? = null,
+    val maxPoints: Double? = 10.0
+)
+
+@Serializable
+data class ExamResultDetailResponseMobile(
+    val resultId: String? = null,
+    val scheduleId: String? = null,
+    val judulUjian: String? = null,
+    val kodeMapel: String? = null,
+    val namaMapel: String? = null,
+    val nis: String? = null,
+    val namaMurid: String? = null,
+    val kelas: String? = null,
+    val score: Double = 0.0,
+    val totalSoal: Int = 0,
+    val totalBenar: Int = 0,
+    val totalSalah: Int = 0,
+    val totalKosong: Int = 0,
+    val durationSeconds: Long = 0,
+    val status: String? = null,
+    val hasUngradedEssay: Boolean = false,
+    val reviewAllowed: Boolean = false,
+    val message: String? = null,
+    val feedbackList: List<QuestionFeedbackMobile> = emptyList()
+)
+
 

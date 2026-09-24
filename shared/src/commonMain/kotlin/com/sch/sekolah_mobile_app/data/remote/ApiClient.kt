@@ -373,6 +373,44 @@ class ApiClient(
         return response.body()
     }
 
+    suspend fun getStudentExamHistory(token: String, kodeMapel: String): StudentSubjectExamHistoryResponseMobile {
+        val url = ApiConfig.getStudentExamHistoryUrl(kodeMapel)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil riwayat ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun getExamResultDetail(token: String, resultId: String): ExamResultDetailResponseMobile {
+        val url = ApiConfig.getExamResultDetailUrl(resultId)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengambil rincian hasil ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
     suspend fun getStudentSubjects(token: String, kelas: String? = null): List<StudentMataPelajaranItem> {
         val url = ApiConfig.getStudentMataPelajaranUrl(kelas)
         val response = httpClient.get(url) {

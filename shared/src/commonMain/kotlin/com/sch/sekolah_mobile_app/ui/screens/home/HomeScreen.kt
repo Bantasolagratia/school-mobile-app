@@ -38,6 +38,7 @@ fun HomeScreen(
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit = {},
+    onNavigateToExamHistory: () -> Unit = {},
     onNavigateToMapel: () -> Unit = {},
     onNavigateToRaport: () -> Unit = {},
     onNavigateToJadwal: () -> Unit = {},
@@ -335,6 +336,15 @@ fun HomeScreen(
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
+                    if (!isGuru) {
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.History,
+                            title = "Riwayat Ujian",
+                            subtitle = "Histori & review nilai",
+                            onClick = onNavigateToExamHistory
+                        )
+                    }
                     if (isRaportModuleEnabled) {
                         QuickInfoCard(
                             modifier = Modifier.weight(1f),
@@ -365,6 +375,14 @@ fun HomeScreen(
                         subtitle = "Status pengerjaan & jadwal ujian",
                         onClick = onNavigateToUjian
                     )
+                    if (!isGuru) {
+                        QuickInfoCard(
+                            icon = Icons.Default.History,
+                            title = "Riwayat Ujian & Nilai",
+                            subtitle = "Lihat histori ujian & review pembahasan",
+                            onClick = onNavigateToExamHistory
+                        )
+                    }
                     AnimatedVisibility(
                         visible = isRaportModuleEnabled,
                         enter = fadeIn() + expandVertically(),

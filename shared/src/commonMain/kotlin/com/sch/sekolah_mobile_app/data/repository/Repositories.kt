@@ -271,6 +271,18 @@ class UjianRepository(
         val token = authRepository.getAccessToken()
         return apiClient.fetchImageBytes(pathOrUrl, token)
     }
+
+    suspend fun getStudentExamHistory(kodeMapel: String): com.sch.sekolah_mobile_app.data.model.StudentSubjectExamHistoryResponseMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getStudentExamHistory(token, kodeMapel)
+    }
+
+    suspend fun getExamResultDetail(resultId: String): com.sch.sekolah_mobile_app.data.model.ExamResultDetailResponseMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getExamResultDetail(token, resultId)
+    }
 }
 
 class MataPelajaranRepository(
