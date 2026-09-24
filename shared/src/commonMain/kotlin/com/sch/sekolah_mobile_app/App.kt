@@ -37,6 +37,7 @@ import com.sch.sekolah_mobile_app.ui.screens.notifications.NotificationsScreen
 import com.sch.sekolah_mobile_app.ui.screens.profile.ProfileScreen
 import com.sch.sekolah_mobile_app.ui.screens.raport.RaportScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
+import com.sch.sekolah_mobile_app.ui.screens.ujian.StudentExamHistoryScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
 import com.sch.sekolah_mobile_app.ui.theme.LightBackground
 import com.sch.sekolah_mobile_app.ui.theme.PrimaryTeal
@@ -51,6 +52,7 @@ enum class ScreenState {
 enum class SubScreen {
     NONE,
     UJIAN_LIST,
+    EXAM_HISTORY,
     MAPEL_STUDENT,
     MATERI_LIST,
     MATERI_DETAIL,
@@ -196,6 +198,15 @@ fun App() {
                             )
                         }
 
+                        SubScreen.EXAM_HISTORY -> {
+                            StudentExamHistoryScreen(
+                                ujianRepository = ujianRepository,
+                                mapelRepository = mapelRepository,
+                                profile = currentProfile,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE }
+                            )
+                        }
+
                         SubScreen.MAPEL_STUDENT -> {
                             StudentMapelScreen(
                                 mapelRepository = mapelRepository,
@@ -334,6 +345,7 @@ fun App() {
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
+                                                onNavigateToExamHistory = { currentSubScreen = SubScreen.EXAM_HISTORY },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
                                                 onNavigateToRaport = {
                                                     if (isRaportModuleEnabled) {
@@ -385,6 +397,7 @@ fun App() {
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
+                                                onNavigateToExamHistory = { currentSubScreen = SubScreen.EXAM_HISTORY },
                                                 onNavigateToMapel = { currentSubScreen = SubScreen.MAPEL_STUDENT },
                                                 onNavigateToRaport = {
                                                     if (isRaportModuleEnabled) {
@@ -419,6 +432,7 @@ private fun MainContent(
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit,
+    onNavigateToExamHistory: () -> Unit = {},
     onNavigateToMapel: () -> Unit,
     onNavigateToRaport: () -> Unit,
     onNavigateToJadwal: () -> Unit,
@@ -432,6 +446,7 @@ private fun MainContent(
                 profile = profile,
                 onNavigateToGuru = onNavigateToGuru,
                 onNavigateToUjian = onNavigateToUjian,
+                onNavigateToExamHistory = onNavigateToExamHistory,
                 onNavigateToMapel = onNavigateToMapel,
                 onNavigateToRaport = onNavigateToRaport,
                 onNavigateToJadwal = onNavigateToJadwal,
