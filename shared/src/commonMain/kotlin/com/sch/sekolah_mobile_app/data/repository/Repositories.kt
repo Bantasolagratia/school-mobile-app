@@ -424,6 +424,15 @@ class IzinRepository(
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getSuratIzinDetail(token, id)
     }
+
+    suspend fun getDefaultWaliKelas(): Guru? {
+        val token = authRepository.getAccessToken() ?: return null
+        return try {
+            apiClient.getDefaultWaliKelas(token)
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
 

@@ -140,4 +140,7 @@ object ApiConfig {
 
     fun getIzinAttachmentUrl(id: String): String =
         "${getBaseUrl()}/api/izin/$id/attachment"
+
+    fun getDefaultWaliKelasUrl(): String =
+        "${getBaseUrl()}/api/izin/default-wali"
 }

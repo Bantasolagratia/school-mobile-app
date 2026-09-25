@@ -401,7 +401,7 @@ private fun IzinCard(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Guru PJ: ${item.guruPenanggungJawabNama ?: item.guruPenanggungJawabNip}",
+                    text = "Guru PJ: ${item.guruPenanggungJawabNama ?: "Guru Penanggung Jawab"}",
                     fontSize = 12.sp,
                     color = SlateGray
                 )

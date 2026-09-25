@@ -749,5 +749,20 @@ class ApiClient(
         }
         return response.body()
     }
+
+    suspend fun getDefaultWaliKelas(token: String): Guru? {
+        val url = ApiConfig.getDefaultWaliKelasUrl()
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            return null
+        }
+        return try {
+            response.body()
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
 
