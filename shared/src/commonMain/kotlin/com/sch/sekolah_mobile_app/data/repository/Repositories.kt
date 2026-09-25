@@ -384,4 +384,47 @@ class NotificationRepository(
     }
 }
 
+class IzinRepository(
+    private val authRepository: AuthRepository,
+    private val apiClient: ApiClient = authRepository.apiClient
+) {
+    suspend fun getMyIzinList(): List<SuratIzinItemMobile> {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getMyIzinList(token)
+    }
+
+    suspend fun submitIzin(
+        id: String?,
+        kategori: String,
+        tanggalMulai: String,
+        tanggalSelesai: String,
+        keterangan: String,
+        guruNip: String,
+        guruNama: String?,
+        file: SelectedFile
+    ): SuratIzinItemMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.submitSuratIzin(
+            token = token,
+            id = id,
+            kategori = kategori,
+            tanggalMulai = tanggalMulai,
+            tanggalSelesai = tanggalSelesai,
+            keterangan = keterangan,
+            guruNip = guruNip,
+            guruNama = guruNama,
+            file = file
+        )
+    }
+
+    suspend fun getIzinDetail(id: String): SuratIzinItemMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getSuratIzinDetail(token, id)
+    }
+}
+
+
 

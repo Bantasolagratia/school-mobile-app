@@ -128,4 +128,16 @@ object ApiConfig {
 
     fun getMarkAllNotificationsReadUrl(): String =
         "${getBaseUrl()}/api/notifications/read-all"
+
+    fun getMyIzinListUrl(): String =
+        "${getBaseUrl()}/api/izin/my-requests"
+
+    fun getSubmitIzinUrl(): String =
+        "${getBaseUrl()}/api/izin/request"
+
+    fun getIzinDetailUrl(id: String): String =
+        "${getBaseUrl()}/api/izin/$id"
+
+    fun getIzinAttachmentUrl(id: String): String =
+        "${getBaseUrl()}/api/izin/$id/attachment"
 }
