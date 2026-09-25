@@ -7,6 +7,8 @@ import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.plugin
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -15,6 +17,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.readBytes
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
@@ -664,6 +667,87 @@ class ApiClient(
             } catch (_: Exception) {}
             throw Exception(message)
         }
+    }
+
+    suspend fun getMyIzinList(token: String): List<SuratIzinItemMobile> {
+        val url = ApiConfig.getMyIzinListUrl()
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat riwayat surat izin (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun submitSuratIzin(
+        token: String,
+        id: String?,
+        kategori: String,
+        tanggalMulai: String,
+        tanggalSelesai: String,
+        keterangan: String,
+        guruNip: String,
+        guruNama: String?,
+        file: SelectedFile
+    ): SuratIzinItemMobile {
+        val url = ApiConfig.getSubmitIzinUrl()
+        val response = httpClient.submitFormWithBinaryData(
+            url = url,
+            formData = formData {
+                if (!id.isNullOrBlank()) {
+                    append("id", id)
+                }
+                append("kategori", kategori)
+                append("tanggalMulai", tanggalMulai)
+                append("tanggalSelesai", tanggalSelesai)
+                append("keterangan", keterangan)
+                append("guruPenanggungJawabNip", guruNip)
+                if (!guruNama.isNullOrBlank()) {
+                    append("guruPenanggungJawabNama", guruNama)
+                }
+                append("file", file.bytes, Headers.build {
+                    append(HttpHeaders.ContentType, file.mimeType)
+                    append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                })
+            }
+        ) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengajukan surat izin (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
+
+    suspend fun getSuratIzinDetail(token: String, id: String): SuratIzinItemMobile {
+        val url = ApiConfig.getIzinDetailUrl(id)
+        val response = httpClient.get(url) {
+            header("Authorization", "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat detail surat izin (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
     }
 }
 

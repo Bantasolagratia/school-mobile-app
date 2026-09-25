@@ -15,9 +15,11 @@ import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
 import com.sch.sekolah_mobile_app.data.model.Jadwal
 import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
+import com.sch.sekolah_mobile_app.data.model.SuratIzinItemMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
+import com.sch.sekolah_mobile_app.data.repository.IzinRepository
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.data.repository.MataPelajaranRepository
 import com.sch.sekolah_mobile_app.data.repository.NotificationRepository
@@ -27,6 +29,9 @@ import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.ui.screens.calendar.CalendarScreen
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
+import com.sch.sekolah_mobile_app.ui.screens.izin.CreateIzinScreen
+import com.sch.sekolah_mobile_app.ui.screens.izin.IzinDetailScreen
+import com.sch.sekolah_mobile_app.ui.screens.izin.StudentIzinListScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.StudentQrScannerScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherQrKioskScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
@@ -60,7 +65,10 @@ enum class SubScreen {
     CALENDAR,
     TEACHER_QR_KIOSK,
     STUDENT_QR_SCANNER,
-    NOTIFICATIONS
+    NOTIFICATIONS,
+    IZIN_LIST,
+    IZIN_CREATE,
+    IZIN_DETAIL
 }
 
 enum class NavigationTab(val label: String, val icon: ImageVector) {
@@ -79,6 +87,7 @@ fun App() {
     val raportRepository = remember { RaportRepository(authRepository = authRepository) }
     val jadwalRepository = remember { JadwalRepository(authRepository = authRepository) }
     val notificationRepository = remember { NotificationRepository(authRepository = authRepository) }
+    val izinRepository = remember { IzinRepository(authRepository = authRepository) }
 
     val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
 
@@ -93,6 +102,7 @@ fun App() {
     var selectedMateri by remember { mutableStateOf<MateriItem?>(null) }
     var selectedMateriId by remember { mutableStateOf<String?>(null) }
     var selectedJadwal by remember { mutableStateOf<Jadwal?>(null) }
+    var selectedIzin by remember { mutableStateOf<SuratIzinItemMobile?>(null) }
     var unreadNotifCount by remember { mutableStateOf(0L) }
 
     // Sync remote config, SSE, dan hitung notifikasi saat user terautentikasi
@@ -311,6 +321,40 @@ fun App() {
                             )
                         }
 
+                        SubScreen.IZIN_LIST -> {
+                            StudentIzinListScreen(
+                                izinRepository = izinRepository,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE },
+                                onCreateIzin = { currentSubScreen = SubScreen.IZIN_CREATE },
+                                onSelectIzin = { item ->
+                                    selectedIzin = item
+                                    currentSubScreen = SubScreen.IZIN_DETAIL
+                                }
+                            )
+                        }
+
+                        SubScreen.IZIN_CREATE -> {
+                            CreateIzinScreen(
+                                izinRepository = izinRepository,
+                                guruRepository = guruRepository,
+                                profile = currentProfile,
+                                onNavigateBack = { currentSubScreen = SubScreen.IZIN_LIST },
+                                onSuccessSubmitted = { currentSubScreen = SubScreen.IZIN_LIST }
+                            )
+                        }
+
+                        SubScreen.IZIN_DETAIL -> {
+                            val item = selectedIzin
+                            if (item != null) {
+                                IzinDetailScreen(
+                                    item = item,
+                                    onNavigateBack = { currentSubScreen = SubScreen.IZIN_LIST }
+                                )
+                            } else {
+                                currentSubScreen = SubScreen.IZIN_LIST
+                            }
+                        }
+
                         SubScreen.NONE -> {
                             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                                 val isTabletOrWide = maxWidth >= 600.dp
@@ -354,6 +398,7 @@ fun App() {
                                                 },
                                                 onNavigateToJadwal = { currentSubScreen = SubScreen.CALENDAR },
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
+                                                onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
                                                 onLogout = {
                                                     currentProfile = null
@@ -406,6 +451,7 @@ fun App() {
                                                 },
                                                 onNavigateToJadwal = { currentSubScreen = SubScreen.CALENDAR },
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
+                                                onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
                                                 onLogout = {
                                                     currentProfile = null
@@ -437,6 +483,7 @@ private fun MainContent(
     onNavigateToRaport: () -> Unit,
     onNavigateToJadwal: () -> Unit,
     onNavigateToNotifications: () -> Unit,
+    onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long,
     onLogout: () -> Unit
 ) {
@@ -451,6 +498,7 @@ private fun MainContent(
                 onNavigateToRaport = onNavigateToRaport,
                 onNavigateToJadwal = onNavigateToJadwal,
                 onNavigateToNotifications = onNavigateToNotifications,
+                onNavigateToIzin = onNavigateToIzin,
                 unreadNotifCount = unreadNotifCount
             )
         }

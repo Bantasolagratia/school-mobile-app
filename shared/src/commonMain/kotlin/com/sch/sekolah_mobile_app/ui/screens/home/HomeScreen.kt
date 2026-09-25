@@ -43,6 +43,7 @@ fun HomeScreen(
     onNavigateToRaport: () -> Unit = {},
     onNavigateToJadwal: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long = 0
 ) {
     val platformStorage = remember { getPlatformStorage() }
@@ -344,6 +345,13 @@ fun HomeScreen(
                             subtitle = "Histori & review nilai",
                             onClick = onNavigateToExamHistory
                         )
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.Description,
+                            title = "Surat Izin",
+                            subtitle = "Pengajuan & riwayat izin",
+                            onClick = onNavigateToIzin
+                        )
                     }
                     if (isRaportModuleEnabled) {
                         QuickInfoCard(
@@ -381,6 +389,12 @@ fun HomeScreen(
                             title = "Riwayat Ujian & Nilai",
                             subtitle = "Lihat histori ujian & review pembahasan",
                             onClick = onNavigateToExamHistory
+                        )
+                        QuickInfoCard(
+                            icon = Icons.Default.Description,
+                            title = "Surat Izin",
+                            subtitle = "Pengajuan & riwayat izin siswa",
+                            onClick = onNavigateToIzin
                         )
                     }
                     AnimatedVisibility(
