@@ -430,14 +430,14 @@ fun CreateIzinScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Lampiran Dokumen Bukti *",
+                        text = "Lampiran Dokumen Bukti (Opsional)",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = DarkNavy
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Wajib melampirkan surat dokter, surat orang tua, atau bukti pendukung. Format: Gambar (JPG/PNG) atau PDF (Maks 10 MB).",
+                        text = "Unggah surat dokter, surat orang tua, atau berkas pendukung (PDF/Gambar, maks 5 MB) bila ada.",
                         fontSize = 11.sp,
                         color = SlateGray,
                         lineHeight = 16.sp
@@ -555,10 +555,6 @@ fun CreateIzinScreen(
                         return@Button
                     }
                     val file = selectedFile
-                    if (file == null) {
-                        submitError = "Wajib melampirkan dokumen surat izin (Gambar / PDF)."
-                        return@Button
-                    }
 
                     submitError = null
                     isSubmitting = true

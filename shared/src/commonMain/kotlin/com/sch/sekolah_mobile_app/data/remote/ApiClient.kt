@@ -695,7 +695,7 @@ class ApiClient(
         keterangan: String,
         guruNip: String,
         guruNama: String?,
-        file: SelectedFile
+        file: SelectedFile? = null
     ): SuratIzinItemMobile {
         val url = ApiConfig.getSubmitIzinUrl()
         val response = httpClient.submitFormWithBinaryData(
@@ -712,10 +712,12 @@ class ApiClient(
                 if (!guruNama.isNullOrBlank()) {
                     append("guruPenanggungJawabNama", guruNama)
                 }
-                append("file", file.bytes, Headers.build {
-                    append(HttpHeaders.ContentType, file.mimeType)
-                    append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
-                })
+                if (file != null) {
+                    append("file", file.bytes, Headers.build {
+                        append(HttpHeaders.ContentType, file.mimeType)
+                        append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                    })
+                }
             }
         ) {
             header("Authorization", "Bearer $token")

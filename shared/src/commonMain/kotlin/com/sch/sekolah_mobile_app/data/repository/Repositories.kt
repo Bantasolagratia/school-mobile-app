@@ -402,7 +402,7 @@ class IzinRepository(
         keterangan: String,
         guruNip: String,
         guruNama: String?,
-        file: SelectedFile
+        file: SelectedFile? = null
     ): SuratIzinItemMobile {
         val token = authRepository.getAccessToken()
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
