@@ -226,7 +226,7 @@ fun IzinDetailScreen(
                     // Guru Penanggung Jawab
                     DetailItem(
                         label = "Guru Penanggung Jawab",
-                        value = "${item.guruPenanggungJawabNama ?: "-"} (NIP: ${item.guruPenanggungJawabNip})"
+                        value = item.guruPenanggungJawabNama ?: "-"
                     )
 
                     // Keterangan / Isi Surat

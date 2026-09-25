@@ -65,6 +65,7 @@ fun CreateIzinScreen(
     var keterangan by remember { mutableStateOf("") }
 
     var guruList by remember { mutableStateOf<List<Guru>>(emptyList()) }
+    var defaultWaliGuru by remember { mutableStateOf<Guru?>(null) }
     var selectedGuru by remember { mutableStateOf<Guru?>(null) }
     var isGuruDropdownOpen by remember { mutableStateOf(false) }
     var isTeacherSearchOpen by remember { mutableStateOf(false) }
@@ -77,15 +78,28 @@ fun CreateIzinScreen(
     var submitError by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
-    // Load list guru
+    // Load list guru & default wali kelas
     LaunchedEffect(Unit) {
-        try {
-            val list = guruRepository.getDaftarGuru()
-            guruList = list
-            if (list.isNotEmpty()) {
-                selectedGuru = list.first()
-            }
-        } catch (_: Exception) {}
+        val list = try {
+            guruRepository.getDaftarGuru()
+        } catch (_: Exception) {
+            emptyList()
+        }
+        guruList = list
+
+        val wali = try {
+            izinRepository.getDefaultWaliKelas()
+        } catch (_: Exception) {
+            null
+        }
+
+        if (wali != null) {
+            defaultWaliGuru = wali
+            val matchedInList = list.firstOrNull { it.nip == wali.nip }
+            selectedGuru = matchedInList ?: wali
+        } else if (list.isNotEmpty() && selectedGuru == null) {
+            selectedGuru = list.first()
+        }
     }
 
     val openFilePicker = rememberPlatformFilePicker(
@@ -325,11 +339,32 @@ fun CreateIzinScreen(
                                     color = if (selectedGuru != null) DarkNavy else SlateGray
                                 )
                                 if (selectedGuru != null) {
-                                    Text(
-                                        text = "NIP: ${selectedGuru?.nip} • ${selectedGuru?.displayJabatan}",
-                                        fontSize = 11.sp,
-                                        color = SlateGray
-                                    )
+                                    val isWali = (selectedGuru?.nip != null && selectedGuru?.nip == defaultWaliGuru?.nip)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    ) {
+                                        if (isWali) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = PrimaryTealContainer,
+                                                modifier = Modifier.padding(end = 6.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Wali Kelas",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = PrimaryTealDark,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = selectedGuru?.displayJabatan ?: "Guru Pengajar",
+                                            fontSize = 11.sp,
+                                            color = SlateGray
+                                        )
+                                    }
                                 }
                             }
                             Icon(
@@ -579,11 +614,18 @@ fun CreateIzinScreen(
 
     // Modal Dialog Pilih Guru
     if (isTeacherSearchOpen) {
-        val filteredGuru = remember(guruList, teacherSearchQuery) {
+        val filteredGuru = remember(guruList, teacherSearchQuery, defaultWaliGuru) {
             val q = teacherSearchQuery.trim().lowercase()
-            if (q.isEmpty()) guruList else guruList.filter {
-                it.nama.lowercase().contains(q) || it.nip.lowercase().contains(q) ||
-                        (it.jabatan?.lowercase()?.contains(q) == true)
+            val baseList = if (q.isEmpty()) guruList else guruList.filter {
+                it.nama.lowercase().contains(q) ||
+                        (it.jabatan?.lowercase()?.contains(q) == true) ||
+                        (defaultWaliGuru?.nip == it.nip && "wali kelas".contains(q))
+            }
+            // Prioritaskan Wali Kelas di posisi paling atas
+            if (defaultWaliGuru != null) {
+                baseList.sortedByDescending { it.nip == defaultWaliGuru?.nip }
+            } else {
+                baseList
             }
         }
 
@@ -598,7 +640,7 @@ fun CreateIzinScreen(
                         value = teacherSearchQuery,
                         onValueChange = { teacherSearchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Cari nama guru / NIP...", fontSize = 12.sp) },
+                        placeholder = { Text("Cari nama guru...", fontSize = 12.sp) },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = SlateGray) }
                     )
@@ -609,6 +651,7 @@ fun CreateIzinScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filteredGuru, key = { it.nip }) { guru ->
+                            val isWali = (guru.nip == defaultWaliGuru?.nip)
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -630,11 +673,31 @@ fun CreateIzinScreen(
                                             fontWeight = FontWeight.SemiBold,
                                             color = DarkNavy
                                         )
-                                        Text(
-                                            text = "NIP: ${guru.nip} • ${guru.displayJabatan}",
-                                            fontSize = 11.sp,
-                                            color = SlateGray
-                                        )
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        ) {
+                                            if (isWali) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = PrimaryTealContainer,
+                                                    modifier = Modifier.padding(end = 6.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "Wali Kelas",
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = PrimaryTealDark,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                            Text(
+                                                text = guru.displayJabatan,
+                                                fontSize = 11.sp,
+                                                color = SlateGray
+                                            )
+                                        }
                                     }
                                     if (selectedGuru?.nip == guru.nip) {
                                         Icon(
