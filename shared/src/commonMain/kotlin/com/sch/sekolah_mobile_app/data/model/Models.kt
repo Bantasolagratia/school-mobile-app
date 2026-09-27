@@ -497,4 +497,19 @@ data class CalendarDocumentMobile(
     val payload: CalendarPayloadMobile? = null
 )
 
+@Serializable
+data class ExamCardMobile(
+    val eligible: Boolean = false,
+    val isBlacklisted: Boolean = false,
+    val message: String? = null,
+    val alasan: String? = null,
+    val nis: Long? = null,
+    val nama: String? = null,
+    val kelas: String? = null,
+    val ruangan: String? = null,
+    val posisi: String? = null,
+    val semester: String? = "Ganjil 2026/2027",
+    val tahunAjaran: String? = "2026/2027"
+)
+
 

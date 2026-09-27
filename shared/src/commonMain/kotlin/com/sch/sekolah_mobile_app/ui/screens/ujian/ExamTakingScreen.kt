@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
+import com.sch.sekolah_mobile_app.data.model.ExamCardMobile
 import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
 import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.UjianQuestionMobile
@@ -79,6 +81,10 @@ fun ExamTakingScreen(
     var kickMessage by remember { mutableStateOf("") }
     var isAlreadyFinished by remember { mutableStateOf(false) }
     var alreadyFinishedMessage by remember { mutableStateOf("") }
+
+    // Kartu Tanda Peserta Ujian Dialog State
+    var showExamCardDialog by remember { mutableStateOf(false) }
+    var examCard by remember { mutableStateOf<ExamCardMobile?>(null) }
 
     // Emergency Exit Key Dialog State (Fasilitas 7.3)
     var showEmergencyDialog by remember { mutableStateOf(false) }
@@ -154,6 +160,11 @@ fun ExamTakingScreen(
         } finally {
             isLoadingQuestions = false
         }
+
+        // 3. Fetch exam participant card (for supervisor inspection anytime during kiosk)
+        try {
+            examCard = ujianRepository.getMyExamCard(profile?.nis)
+        } catch (_: Exception) {}
     }
 
     // Periodic heartbeat removed — replaced by single-hit exam-start/exam-exit endpoints
@@ -274,34 +285,57 @@ fun ExamTakingScreen(
                             )
                         }
 
-                        // Tombol Kunci Keluar Darurat (Fasilitas 7.3)
-                        OutlinedButton(
-                            onClick = {
-                                emergencyKeyInput = ""
-                                emergencyKeyError = null
-                                showEmergencyDialog = true
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFFF87171)
-                            ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFEF4444))
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.VpnKey,
-                                contentDescription = null,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Kunci Keluar",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Tombol Kartu Ujian (Dapat dipanggil kapanpun tanpa mengganggu ujian)
+                            Button(
+                                onClick = { showExamCardDialog = true },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Badge,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Kartu Ujian",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            // Tombol Kunci Keluar Darurat (Fasilitas 7.3)
+                            OutlinedButton(
+                                onClick = {
+                                    emergencyKeyInput = ""
+                                    emergencyKeyError = null
+                                    showEmergencyDialog = true
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFFF87171)
+                                ),
+                                border = ButtonDefaults.outlinedButtonBorder.copy(
+                                    brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFEF4444))
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.VpnKey,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Kunci Keluar",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -935,6 +969,170 @@ fun ExamTakingScreen(
                     }
                 }
             )
+        }
+
+        // 3c. Pop-up Kartu Tanda Peserta Ujian (Dapat dipanggil kapanpun oleh murid/pengawas tanpa mengganggu ujian)
+        if (showExamCardDialog) {
+            Dialog(
+                onDismissRequest = { showExamCardDialog = false }
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(PrimaryTeal, PrimaryTealDark)
+                                )
+                            )
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Badge,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "KARTU PESERTA UJIAN",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    letterSpacing = 1.sp
+                                )
+                            }
+                            Surface(
+                                color = AccentAmber,
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "PESERTA RESMI",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = examCard?.nama ?: (profile?.displayName ?: "Siswa"),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("NIS", fontSize = 9.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    text = examCard?.nis?.toString() ?: (profile?.nis ?: "202610012"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                            Column {
+                                Text("KELAS", fontSize = 9.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    text = examCard?.kelas ?: (profile?.displayDetail ?: "Kelas 10-B"),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                            Column {
+                                Text("RUANGAN", fontSize = 9.sp, color = Color.White.copy(alpha = 0.7f))
+                                Text(
+                                    text = examCard?.ruangan ?: (exam.displayRuangan),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("POSISI", fontSize = 9.sp, color = Color.White.copy(alpha = 0.7f))
+                                Surface(
+                                    color = AccentAmber,
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "Kursi ${examCard?.posisi ?: "A1"}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = DarkNavy,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Surface(
+                            color = Color.Black.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    tint = AccentAmber,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Mode Kiosk Aman Aktif • Ujian: ${exam.judulUjian ?: "Ujian Semester"}",
+                                    fontSize = 10.sp,
+                                    color = Color.White.copy(alpha = 0.85f)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { showExamCardDialog = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Tutup & Lanjutkan Ujian",
+                                color = DarkNavy,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         // 4. Konfirmasi Selesai Ujian
