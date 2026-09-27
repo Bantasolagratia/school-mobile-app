@@ -326,8 +326,8 @@ fun HomeScreen(
                     QuickInfoCard(
                         modifier = Modifier.weight(1f),
                         icon = Icons.Default.CalendarToday,
-                        title = if (isGuru) "Jadwal Mengajar" else "Jadwal Pelajaran",
-                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Lihat agenda kelas mingguan",
+                        title = if (isGuru) "Kalender Mengajar" else "Kalender",
+                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Agenda kelas, ujian & kegiatan",
                         onClick = onNavigateToJadwal
                     )
                     QuickInfoCard(
@@ -373,8 +373,8 @@ fun HomeScreen(
                     )
                     QuickInfoCard(
                         icon = Icons.Default.CalendarToday,
-                        title = if (isGuru) "Jadwal Mengajar" else "Jadwal Pelajaran",
-                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Lihat agenda kelas mingguan",
+                        title = if (isGuru) "Kalender Mengajar" else "Kalender",
+                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Agenda kelas, ujian & kegiatan",
                         onClick = onNavigateToJadwal
                     )
                     QuickInfoCard(
