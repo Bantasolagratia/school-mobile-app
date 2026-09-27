@@ -188,7 +188,8 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    if (!isGuru) {
+                                    // Tombol Flip Kartu Peserta Ujian HANYA muncul pada Hari H Ujian Massal
+                                    if (!isGuru && examCard?.isExamDay == true) {
                                         Surface(
                                             color = Color.White.copy(alpha = 0.22f),
                                             shape = CircleShape,

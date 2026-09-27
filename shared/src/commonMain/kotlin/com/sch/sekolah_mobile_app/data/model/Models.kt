@@ -249,7 +249,8 @@ data class ExamScheduleItem(
     val status: String? = null,
     val adminStatus: String? = null,
     val targetKelas: List<TargetKelasItemMobile> = emptyList(),
-    val studentStatus: String? = null
+    val studentStatus: String? = null,
+    val kategoriKode: String? = null
 ) {
     val displaySupervisor: String
         get() {
@@ -261,6 +262,13 @@ data class ExamScheduleItem(
         get() {
             return targetKelas.firstOrNull()?.ruangan?.takeIf { it.isNotBlank() } ?: "Ruang Ujian"
         }
+
+    val isMassExam: Boolean
+        get() = kategoriKode?.equals("UTS", ignoreCase = true) == true ||
+                kategoriKode?.equals("UAS", ignoreCase = true) == true ||
+                judulUjian?.contains("UTS", ignoreCase = true) == true ||
+                judulUjian?.contains("UAS", ignoreCase = true) == true ||
+                judulUjian?.contains("Semester", ignoreCase = true) == true
 }
 
 @Serializable
@@ -500,9 +508,12 @@ data class CalendarDocumentMobile(
 @Serializable
 data class ExamCardMobile(
     val eligible: Boolean = false,
+    val isExamDay: Boolean = false,
     val isBlacklisted: Boolean = false,
     val message: String? = null,
     val alasan: String? = null,
+    val kategori: String? = null,
+    val judulUjian: String? = null,
     val nis: Long? = null,
     val nama: String? = null,
     val kelas: String? = null,
