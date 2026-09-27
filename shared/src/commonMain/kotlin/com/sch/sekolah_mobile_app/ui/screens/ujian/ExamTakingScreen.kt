@@ -1079,7 +1079,7 @@ fun ExamTakingScreen(
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
-                                        text = "Kursi ${examCard?.posisi ?: "A1"}",
+                                        text = examCard?.posisi ?: "A1",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.ExtraBold,
                                         color = DarkNavy,
