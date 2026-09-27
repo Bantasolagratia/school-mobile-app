@@ -777,5 +777,23 @@ class ApiClient(
         }
         return response.body()
     }
+
+    suspend fun getMyExamCard(token: String, nis: String? = null): ExamCardMobile {
+        val url = ApiConfig.getExamCardUrl(nis)
+        val response = httpClient.get(url) {
+            header(HttpHeaders.Authorization, "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal memuat kartu ujian (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            return ExamCardMobile(eligible = false, isBlacklisted = false, message = message)
+        }
+        return response.body()
+    }
 }
+
 

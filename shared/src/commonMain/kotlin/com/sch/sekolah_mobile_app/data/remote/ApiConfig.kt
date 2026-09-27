@@ -146,4 +146,10 @@ object ApiConfig {
 
     fun getDefaultWaliKelasUrl(): String =
         "${getBaseUrl()}/api/izin/default-wali"
+
+    fun getExamCardUrl(nis: String? = null): String {
+        val n = nis?.trim()?.takeIf { it.isNotEmpty() }
+        return if (n != null) "${getBaseUrl()}/api/ujian/room-allocation/my-card?nis=$n"
+        else "${getBaseUrl()}/api/ujian/room-allocation/my-card"
+    }
 }

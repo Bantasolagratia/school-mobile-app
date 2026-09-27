@@ -273,6 +273,12 @@ class UjianRepository(
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getExamResultDetail(token, resultId)
     }
+
+    suspend fun getMyExamCard(nis: String? = null): com.sch.sekolah_mobile_app.data.model.ExamCardMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getMyExamCard(token, nis)
+    }
 }
 
 class MataPelajaranRepository(

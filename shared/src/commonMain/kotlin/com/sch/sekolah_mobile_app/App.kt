@@ -386,6 +386,7 @@ fun App() {
                                                 tab = currentTab,
                                                 authRepository = authRepository,
                                                 guruRepository = guruRepository,
+                                                ujianRepository = ujianRepository,
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
@@ -439,6 +440,7 @@ fun App() {
                                                 tab = currentTab,
                                                 authRepository = authRepository,
                                                 guruRepository = guruRepository,
+                                                ujianRepository = ujianRepository,
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
@@ -475,6 +477,7 @@ private fun MainContent(
     tab: NavigationTab,
     authRepository: AuthRepository,
     guruRepository: GuruRepository,
+    ujianRepository: UjianRepository,
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit,
@@ -499,7 +502,8 @@ private fun MainContent(
                 onNavigateToJadwal = onNavigateToJadwal,
                 onNavigateToNotifications = onNavigateToNotifications,
                 onNavigateToIzin = onNavigateToIzin,
-                unreadNotifCount = unreadNotifCount
+                unreadNotifCount = unreadNotifCount,
+                ujianRepository = ujianRepository
             )
         }
         NavigationTab.GURU -> {

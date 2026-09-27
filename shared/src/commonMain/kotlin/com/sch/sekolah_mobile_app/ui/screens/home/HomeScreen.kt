@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,8 +26,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sch.sekolah_mobile_app.data.model.ExamCardMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
+import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +47,8 @@ fun HomeScreen(
     onNavigateToJadwal: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToIzin: () -> Unit = {},
-    unreadNotifCount: Long = 0
+    unreadNotifCount: Long = 0,
+    ujianRepository: UjianRepository? = null
 ) {
     val platformStorage = remember { getPlatformStorage() }
     var isSensitiveInfoMasked by remember {
@@ -56,6 +60,23 @@ fun HomeScreen(
     val displayDetail = profile?.displayDetail ?: if (isGuru) "Dewan Guru" else "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
     val nip = profile?.nip ?: "-"
+
+    // State Kartu Ujian (Flip Card)
+    var isCardFlipped by remember { mutableStateOf(false) }
+    var examCard by remember { mutableStateOf<ExamCardMobile?>(null) }
+    var isLoadingExamCard by remember { mutableStateOf(false) }
+
+    LaunchedEffect(profile?.nis) {
+        if (!isGuru && ujianRepository != null) {
+            try {
+                isLoadingExamCard = true
+                examCard = ujianRepository.getMyExamCard(profile?.nis)
+            } catch (_: Exception) {}
+            finally {
+                isLoadingExamCard = false
+            }
+        }
+    }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -131,94 +152,345 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Student Identity Card
+            // Student Identity Card (Flip Card)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(PrimaryTeal, PrimaryTealDark)
+                if (!isCardFlipped) {
+                    // Sisi Depan: Kartu Pelajar Digital / Kartu Identitas Guru
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(PrimaryTeal, PrimaryTealDark)
+                                )
                             )
-                        )
-                        .padding(20.dp)
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isGuru) "KARTU IDENTITAS GURU" else "KARTU PELAJAR DIGITAL",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White.copy(alpha = 0.8f),
-                                letterSpacing = 1.sp
-                            )
-                            Surface(
-                                color = AccentAmber,
-                                shape = RoundedCornerShape(8.dp)
+                            .padding(20.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (isGuru) "GURU AKTIF" else "MURID AKTIF",
-                                    fontSize = 10.sp,
+                                    text = if (isGuru) "KARTU IDENTITAS GURU" else "KARTU PELAJAR DIGITAL",
+                                    fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = DarkNavy,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    letterSpacing = 1.sp
                                 )
-                            }
-                        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = displayName,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Icon(
-                                        imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
-                                        tint = Color.White.copy(alpha = 0.8f),
-                                        modifier = Modifier
-                                            .size(13.dp)
-                                            .clickable {
-                                                isSensitiveInfoMasked = !isSensitiveInfoMasked
-                                                platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (!isGuru) {
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.22f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.clickable { isCardFlipped = true }
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Badge,
+                                                    contentDescription = null,
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(13.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "Kartu Ujian ➔",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
                                             }
+                                        }
+                                    }
+
+                                    Surface(
+                                        color = AccentAmber,
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Text(
+                                            text = if (isGuru) "GURU AKTIF" else "MURID AKTIF",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkNavy,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = displayName,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
+                                            tint = Color.White.copy(alpha = 0.8f),
+                                            modifier = Modifier
+                                                .size(13.dp)
+                                                .clickable {
+                                                    isSensitiveInfoMasked = !isSensitiveInfoMasked
+                                                    platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                                                }
+                                        )
+                                    }
+                                    Text(
+                                        text = if (isSensitiveInfoMasked) "****" else (if (isGuru) nip else nis),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
                                     )
                                 }
+                                Column {
+                                    Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(displayDetail, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                }
+                                Column {
+                                    Text("SEMESTER", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text("Ganjil 2026/2027", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Sisi Belakang: Kartu Peserta Ujian (Flip Card)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                if (examCard?.isBlacklisted == true)
+                                    Brush.horizontalGradient(listOf(Color(0xFF991B1B), Color(0xFF7F1D1D)))
+                                else
+                                    Brush.horizontalGradient(listOf(Color(0xFF0F766E), Color(0xFF115E59)))
+                            )
+                            .padding(20.dp)
+                    ) {
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Badge,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "KARTU PESERTA UJIAN",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
+                                Surface(
+                                    color = when {
+                                        examCard?.isBlacklisted == true -> Color(0xFFEF4444)
+                                        examCard?.eligible == true -> AccentAmber
+                                        else -> Color.White.copy(alpha = 0.25f)
+                                    },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = when {
+                                            examCard?.isBlacklisted == true -> "DICEKAL / BLACKLIST"
+                                            examCard?.eligible == true -> "PESERTA RESMI"
+                                            else -> "BELUM TERJADWAL"
+                                        },
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (examCard?.eligible == true) DarkNavy else Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            if (examCard?.isBlacklisted == true) {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Block,
+                                            contentDescription = null,
+                                            tint = Color(0xFFFCA5A5),
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = "Akses Ujian Dicekal (Blacklist)",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = examCard?.alasan?.let { "Alasan: $it" }
+                                                    ?: (examCard?.message ?: "Anda masuk daftar pencekalan ujian sekolah sehingga kartu peserta ujian tidak diterbitkan."),
+                                                fontSize = 11.sp,
+                                                color = Color.White.copy(alpha = 0.9f)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (examCard?.eligible == true) {
                                 Text(
-                                    text = if (isSensitiveInfoMasked) "****" else (if (isGuru) nip else nis),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                                    text = examCard?.nama ?: displayName,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
                                     color = Color.White
                                 )
+
+                                Spacer(modifier = Modifier.height(10.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Text(
+                                            text = examCard?.nis?.toString() ?: nis,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Column {
+                                        Text("KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Text(
+                                            text = examCard?.kelas ?: displayDetail,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Column {
+                                        Text("RUANGAN", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Text(
+                                            text = examCard?.ruangan ?: "-",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("POSISI", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Surface(
+                                            color = AccentAmber,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Kursi ${examCard?.posisi ?: "-"}",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = DarkNavy,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = AccentAmber,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = "Belum Ada Alokasi Kursi",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = examCard?.message ?: "Pembagian ruangan dan bangku ujian Anda sedang diproses oleh pihak sekolah.",
+                                                fontSize = 11.sp,
+                                                color = Color.White.copy(alpha = 0.85f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
-                            Column {
-                                Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                Text(displayDetail, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                            }
-                            Column {
-                                Text("SEMESTER", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                Text("Ganjil 2026/2027", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.clickable { isCardFlipped = false }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CreditCard,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "Kembali ke Kartu Pelajar",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
