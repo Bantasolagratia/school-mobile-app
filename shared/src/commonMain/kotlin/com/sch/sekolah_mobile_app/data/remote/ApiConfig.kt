@@ -48,6 +48,9 @@ object ApiConfig {
     fun getGuruUrl(): String =
         "${getBaseUrl()}/api/management/guru"
 
+    fun getCalendarUrl(): String =
+        "${getBaseUrl()}/api/calendar"
+
     fun getStudentUpcomingExamsUrl(kelas: String? = null): String {
         val k = kelas?.trim()?.takeIf { it.isNotEmpty() }
         return if (k != null) "${getBaseUrl()}/api/ujian/schedule/student-upcoming?kelas=$k"
