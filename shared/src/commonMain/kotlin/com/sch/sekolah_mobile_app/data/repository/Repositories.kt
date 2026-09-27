@@ -354,6 +354,12 @@ class JadwalRepository(
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
         return apiClient.getAttendanceBySchedule(token, idJadwal)
     }
+
+    suspend fun getCalendarDocument(): CalendarDocumentMobile {
+        val token = authRepository.getAccessToken()
+            ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
+        return apiClient.getCalendarDocument(token)
+    }
 }
 
 class NotificationRepository(

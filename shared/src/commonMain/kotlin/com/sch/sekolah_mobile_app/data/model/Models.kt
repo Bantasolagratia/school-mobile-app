@@ -461,4 +461,40 @@ data class ExamResultDetailResponseMobile(
     val feedbackList: List<QuestionFeedbackMobile> = emptyList()
 )
 
+@Serializable
+data class NationalHolidayMobile(
+    val date: String,
+    val name: String,
+    val type: String? = "holiday"
+)
+
+@Serializable
+data class SchoolEventMobile(
+    val id: String? = null,
+    val title: String,
+    val date: String,
+    val endDate: String? = null,
+    val type: String? = null,
+    val categoryId: String? = null,
+    val color: String? = null,
+    val isHoliday: Boolean? = false,
+    val isSystemGenerated: Boolean? = false,
+    val targetAudience: List<String>? = emptyList(),
+    val description: String? = null,
+    val location: String? = null
+)
+
+@Serializable
+data class CalendarPayloadMobile(
+    val nationalHolidays: List<NationalHolidayMobile>? = emptyList(),
+    val schoolEvents: List<SchoolEventMobile>? = emptyList()
+)
+
+@Serializable
+data class CalendarDocumentMobile(
+    val id: String? = null,
+    val docType: String? = null,
+    val payload: CalendarPayloadMobile? = null
+)
+
 

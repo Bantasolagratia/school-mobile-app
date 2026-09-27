@@ -766,5 +766,16 @@ class ApiClient(
             null
         }
     }
+
+    suspend fun getCalendarDocument(token: String): CalendarDocumentMobile {
+        val url = ApiConfig.getCalendarUrl()
+        val response = httpClient.get(url) {
+            header(HttpHeaders.Authorization, "Bearer $token")
+        }
+        if (!response.status.isSuccess()) {
+            throw Exception("Gagal memuat kalender akademik (${response.status.value})")
+        }
+        return response.body()
+    }
 }
 

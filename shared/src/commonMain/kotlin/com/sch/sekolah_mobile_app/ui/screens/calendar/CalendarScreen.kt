@@ -1,5 +1,6 @@
 package com.sch.sekolah_mobile_app.ui.screens.calendar
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.sch.sekolah_mobile_app.data.model.Jadwal
-import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.model.*
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
 import com.sch.sekolah_mobile_app.ui.theme.*
@@ -52,8 +52,9 @@ fun CalendarScreen(
     var currentMonth by remember { mutableStateOf(realTodayMonth) }
     var selectedDay by remember { mutableStateOf(realTodayDay) }
 
-    // Schedule data
+    // Schedule and Event data
     var allSchedules by remember { mutableStateOf<List<Jadwal>>(emptyList()) }
+    var calendarDoc by remember { mutableStateOf<CalendarDocumentMobile?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedFilterCategory by remember { mutableStateOf("ALL") }
@@ -63,15 +64,25 @@ fun CalendarScreen(
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     )
 
-    fun fetchSchedules() {
+    fun fetchData() {
         coroutineScope.launch {
             try {
                 isLoading = true
                 errorMessage = null
                 val monthStr = currentMonth.toString().padStart(2, '0')
                 val datePrefix = "$currentYear-$monthStr"
-                val list = jadwalRepository.getSchedules(tanggal = datePrefix)
-                allSchedules = list
+                try {
+                    val list = jadwalRepository.getSchedules(tanggal = datePrefix)
+                    allSchedules = list
+                } catch (e: Exception) {
+                    println("Failed to fetch schedules: ${e.message}")
+                }
+                try {
+                    val doc = jadwalRepository.getCalendarDocument()
+                    calendarDoc = doc
+                } catch (e: Exception) {
+                    println("Failed to fetch calendar doc: ${e.message}")
+                }
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Gagal memuat jadwal"
             } finally {
@@ -81,7 +92,7 @@ fun CalendarScreen(
     }
 
     LaunchedEffect(currentYear, currentMonth) {
-        fetchSchedules()
+        fetchData()
     }
 
     // Days in month calculation (standard leap-year logic)
@@ -124,6 +135,32 @@ fun CalendarScreen(
         }
     }
 
+    val allEvents = remember(calendarDoc) {
+        calendarDoc?.payload?.schoolEvents ?: emptyList()
+    }
+    val allNationalHolidays = remember(calendarDoc) {
+        calendarDoc?.payload?.nationalHolidays ?: emptyList()
+    }
+
+    // Filter events for selected day (respecting target audience)
+    val dailyEvents = remember(allEvents, selectedDateString, isGuru) {
+        allEvents.filter { evt ->
+            val inRange = isDateInRange(selectedDateString, evt.date, evt.endDate)
+            val audienceMatch = evt.targetAudience.isNullOrEmpty() ||
+                (isGuru && evt.targetAudience.any { it.equals("guru", ignoreCase = true) }) ||
+                (!isGuru && evt.targetAudience.any { it.equals("murid", ignoreCase = true) })
+            inRange && audienceMatch
+        }
+    }
+
+    val dailyHolidays = remember(allNationalHolidays, selectedDateString) {
+        allNationalHolidays.filter { it.date == selectedDateString }
+    }
+
+    val totalAgendaCount = remember(dailyHolidays, dailyEvents, dailySchedules) {
+        dailyHolidays.size + dailyEvents.size + dailySchedules.size
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -148,7 +185,7 @@ fun CalendarScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { fetchSchedules() }) {
+                    IconButton(onClick = { fetchData() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Muat Ulang")
                     }
                 },
@@ -244,6 +281,43 @@ fun CalendarScreen(
                                     } else {
                                         val isSelected = (dayNum == selectedDay)
                                         val isToday = (dayNum == realTodayDay && currentMonth == realTodayMonth && currentYear == realTodayYear)
+                                        val dayDateStr = "$currentYear-${currentMonth.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}"
+
+                                        val isSunday = (c == 6)
+                                        val hasHoliday = allNationalHolidays.any { it.date == dayDateStr }
+                                        val hasSchoolHoliday = allEvents.any { evt ->
+                                            evt.isHoliday == true && isDateInRange(dayDateStr, evt.date, evt.endDate)
+                                        }
+                                        val isRedDay = isSunday || hasHoliday || hasSchoolHoliday
+
+                                        val hasExam = allEvents.any { evt ->
+                                            val type = evt.type?.uppercase() ?: ""
+                                            val audienceMatch = evt.targetAudience.isNullOrEmpty() ||
+                                                (isGuru && evt.targetAudience.any { it.equals("guru", ignoreCase = true) }) ||
+                                                (!isGuru && evt.targetAudience.any { it.equals("murid", ignoreCase = true) })
+                                            val isExamType = type.contains("UJIAN") || type.contains("EXAM") ||
+                                                evt.title?.contains("UJIAN", ignoreCase = true) == true ||
+                                                evt.title?.contains("UTS", ignoreCase = true) == true ||
+                                                evt.title?.contains("UAS", ignoreCase = true) == true
+                                            isExamType && audienceMatch && isDateInRange(dayDateStr, evt.date, evt.endDate)
+                                        }
+
+                                        val hasGeneralEvent = allEvents.any { evt ->
+                                            val type = evt.type?.uppercase() ?: ""
+                                            val isExamType = type.contains("UJIAN") || type.contains("EXAM") ||
+                                                evt.title?.contains("UJIAN", ignoreCase = true) == true ||
+                                                evt.title?.contains("UTS", ignoreCase = true) == true ||
+                                                evt.title?.contains("UAS", ignoreCase = true) == true
+                                            val isHol = evt.isHoliday == true
+                                            val audienceMatch = evt.targetAudience.isNullOrEmpty() ||
+                                                (isGuru && evt.targetAudience.any { it.equals("guru", ignoreCase = true) }) ||
+                                                (!isGuru && evt.targetAudience.any { it.equals("murid", ignoreCase = true) })
+                                            !isExamType && !isHol && audienceMatch && isDateInRange(dayDateStr, evt.date, evt.endDate)
+                                        }
+
+                                        val hasSchedule = allSchedules.any { j ->
+                                            j.waktuMulai?.startsWith(dayDateStr) == true || j.waktu?.startsWith(dayDateStr) == true
+                                        }
 
                                         Box(
                                             modifier = Modifier
@@ -271,27 +345,50 @@ fun CalendarScreen(
                                                     color = when {
                                                         isSelected -> Color.White
                                                         isToday -> OnPrimaryTealContainer
-                                                        c == 6 -> ErrorRed
+                                                        isRedDay -> ErrorRed
                                                         else -> DarkNavy
                                                     }
                                                 )
 
-                                                // Schedule dot indicators
-                                                val dayDateStr = "$currentYear-${currentMonth.toString().padStart(2, '0')}-${dayNum.toString().padStart(2, '0')}"
-                                                val hasSchedule = allSchedules.any { j ->
-                                                    j.waktuMulai?.startsWith(dayDateStr) == true || j.waktu?.startsWith(dayDateStr) == true
-                                                }
-                                                if (hasSchedule) {
+                                                // Colored dot indicators for Holiday, Exam, Event, Schedule
+                                                val hasAnyDot = hasHoliday || hasSchoolHoliday || hasExam || hasGeneralEvent || hasSchedule
+                                                if (hasAnyDot) {
                                                     Row(
                                                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                                                         modifier = Modifier.padding(top = 2.dp)
                                                     ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(4.dp)
-                                                                .clip(CircleShape)
-                                                                .background(if (isSelected) Color.White else PrimaryTeal)
-                                                        )
+                                                        if (hasHoliday || hasSchoolHoliday) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(4.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(if (isSelected) Color.White else ErrorRed)
+                                                            )
+                                                        }
+                                                        if (hasExam) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(4.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(if (isSelected) Color.White else Color(0xFFF97316))
+                                                            )
+                                                        }
+                                                        if (hasGeneralEvent) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(4.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(if (isSelected) Color.White else Color(0xFF3B82F6))
+                                                            )
+                                                        }
+                                                        if (hasSchedule) {
+                                                            Box(
+                                                                modifier = Modifier
+                                                                    .size(4.dp)
+                                                                    .clip(CircleShape)
+                                                                    .background(if (isSelected) Color.White else PrimaryTeal)
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -300,6 +397,20 @@ fun CalendarScreen(
                                 }
                             }
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Calendar Legend
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        LegendItem(color = ErrorRed, label = "Libur")
+                        LegendItem(color = Color(0xFFF97316), label = "Ujian")
+                        LegendItem(color = Color(0xFF3B82F6), label = "Event")
+                        LegendItem(color = PrimaryTeal, label = "KBM")
                     }
                 }
             }
@@ -345,13 +456,13 @@ fun CalendarScreen(
                     color = DarkNavy
                 )
                 Text(
-                    text = "${dailySchedules.size} Jadwal",
+                    text = "$totalAgendaCount Agenda",
                     fontSize = 12.sp,
                     color = SlateGray
                 )
             }
 
-            // Schedules List
+            // Schedules and Events List
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -359,7 +470,7 @@ fun CalendarScreen(
                 ) {
                     CircularProgressIndicator(color = PrimaryTeal)
                 }
-            } else if (dailySchedules.isEmpty()) {
+            } else if (totalAgendaCount == 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -382,7 +493,7 @@ fun CalendarScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tidak ada sesi kelas, ujian, atau agenda untuk tanggal yang dipilih.",
+                            text = "Tidak ada sesi kelas, ujian, agenda sekolah, atau hari libur untuk tanggal yang dipilih.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             textAlign = TextAlign.Center
@@ -395,6 +506,17 @@ fun CalendarScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // 1. Hari Libur Nasional
+                    items(dailyHolidays) { hol ->
+                        NationalHolidayCardItem(holiday = hol)
+                    }
+
+                    // 2. Event Sekolah & Ujian Master
+                    items(dailyEvents) { evt ->
+                        SchoolEventCardItem(event = evt)
+                    }
+
+                    // 3. Jadwal KBM / Ujian Kelas
                     items(dailySchedules) { j ->
                         ScheduleCardItem(
                             jadwal = j,
@@ -524,4 +646,199 @@ private fun ScheduleCardItem(
             }
         }
     }
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = SlateGray,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun NationalHolidayCardItem(holiday: NationalHolidayMobile) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+        border = BorderStroke(1.dp, Color(0xFFFECACA)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = Color(0xFFFEE2E2),
+                shape = CircleShape,
+                modifier = Modifier.size(42.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = ErrorRed,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Surface(
+                    color = ErrorRed,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "HARI LIBUR NASIONAL",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = holiday.name,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkNavy
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SchoolEventCardItem(event: SchoolEventMobile) {
+    val type = event.type?.uppercase() ?: ""
+    val isExam = type.contains("UJIAN") || type.contains("EXAM") ||
+            event.title?.contains("UJIAN", ignoreCase = true) == true ||
+            event.title?.contains("UTS", ignoreCase = true) == true ||
+            event.title?.contains("UAS", ignoreCase = true) == true
+    val isHoliday = event.isHoliday == true
+
+    val bgColor = when {
+        isHoliday -> Color(0xFFFEF2F2)
+        isExam -> Color(0xFFFFF7ED)
+        else -> Color(0xFFEFF6FF)
+    }
+    val borderColor = when {
+        isHoliday -> Color(0xFFFECACA)
+        isExam -> Color(0xFFFED7AA)
+        else -> Color(0xFFBFDBFE)
+    }
+    val badgeColor = when {
+        isHoliday -> ErrorRed
+        isExam -> Color(0xFFEA580C)
+        else -> Color(0xFF2563EB)
+    }
+    val badgeText = when {
+        isHoliday -> "LIBUR SEKOLAH"
+        isExam -> "UJIAN & ASESMEN"
+        else -> "AGENDA SEKOLAH"
+    }
+    val iconTint = when {
+        isHoliday -> ErrorRed
+        isExam -> Color(0xFFEA580C)
+        else -> Color(0xFF2563EB)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = badgeColor,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = badgeText,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                if (!event.endDate.isNullOrBlank() && event.endDate != event.date) {
+                    Surface(
+                        color = Color.White.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = "${event.date} s/d ${event.endDate}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SlateGray,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = event.title ?: "Event Sekolah",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkNavy
+            )
+
+            if (!event.description.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = event.description,
+                    fontSize = 12.sp,
+                    color = DarkNavy.copy(alpha = 0.85f)
+                )
+            }
+
+            if (!event.location.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = event.location,
+                        fontSize = 11.sp,
+                        color = SlateGray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun isDateInRange(targetDate: String, startDate: String?, endDate: String?): Boolean {
+    if (startDate.isNullOrBlank()) return false
+    val end = if (endDate.isNullOrBlank()) startDate else endDate
+    return targetDate in startDate..end
 }
