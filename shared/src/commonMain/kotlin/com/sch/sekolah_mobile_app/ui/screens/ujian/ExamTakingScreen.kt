@@ -287,24 +287,27 @@ fun ExamTakingScreen(
 
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             // Tombol Kartu Ujian (Dapat dipanggil kapanpun tanpa mengganggu ujian)
-                            Button(
-                                onClick = { showExamCardDialog = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Badge,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Kartu Ujian",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            // HANYA muncul pada ujian massal (UTS / UAS) di hari H
+                            if (exam.isMassExam && (examCard?.isExamDay == true || examCard?.eligible == true)) {
+                                Button(
+                                    onClick = { showExamCardDialog = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Badge,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Kartu Ujian",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
 
                             // Tombol Kunci Keluar Darurat (Fasilitas 7.3)
