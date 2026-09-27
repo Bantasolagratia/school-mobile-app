@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.Jadwal
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
+import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -39,10 +40,17 @@ fun CalendarScreen(
     val coroutineScope = rememberCoroutineScope()
     val isGuru = profile?.isRoleGuru == true
 
+    val todayPair = remember { getCurrentWibDateTime() }
+    val todayDateStr = todayPair.first
+    val todayParts = remember(todayDateStr) { todayDateStr.split("-") }
+    val realTodayYear = remember(todayParts) { todayParts.getOrNull(0)?.toIntOrNull() ?: 2026 }
+    val realTodayMonth = remember(todayParts) { todayParts.getOrNull(1)?.toIntOrNull() ?: 9 }
+    val realTodayDay = remember(todayParts) { todayParts.getOrNull(2)?.toIntOrNull() ?: 27 }
+
     // Calendar navigation state: year, month (1-12), selected day
-    var currentYear by remember { mutableStateOf(2026) }
-    var currentMonth by remember { mutableStateOf(9) } // September
-    var selectedDay by remember { mutableStateOf(18) }
+    var currentYear by remember { mutableStateOf(realTodayYear) }
+    var currentMonth by remember { mutableStateOf(realTodayMonth) }
+    var selectedDay by remember { mutableStateOf(realTodayDay) }
 
     // Schedule data
     var allSchedules by remember { mutableStateOf<List<Jadwal>>(emptyList()) }
@@ -105,8 +113,8 @@ fun CalendarScreen(
     val dailySchedules = remember(allSchedules, selectedDateString, selectedFilterCategory) {
         allSchedules.filter { j ->
             val matchDate = j.waktuMulai?.startsWith(selectedDateString) == true ||
-                j.waktu?.contains(selectedDay.toString()) == true ||
-                allSchedules.size <= 5 // fallback to display schedules if exact date matching format varies
+                j.waktu?.startsWith(selectedDateString) == true ||
+                j.waktu?.contains(selectedDateString) == true
             val matchCategory = when (selectedFilterCategory) {
                 "MURID" -> !j.isCategoryGuru
                 "GURU" -> j.isCategoryGuru
@@ -235,7 +243,7 @@ fun CalendarScreen(
                                         Spacer(modifier = Modifier.weight(1f).aspectRatio(1.2f))
                                     } else {
                                         val isSelected = (dayNum == selectedDay)
-                                        val isToday = (dayNum == 18 && currentMonth == 9 && currentYear == 2026)
+                                        val isToday = (dayNum == realTodayDay && currentMonth == realTodayMonth && currentYear == realTodayYear)
 
                                         Box(
                                             modifier = Modifier
