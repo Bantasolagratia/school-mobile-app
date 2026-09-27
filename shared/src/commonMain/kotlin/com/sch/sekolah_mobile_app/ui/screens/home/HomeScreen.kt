@@ -242,39 +242,65 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(6.dp))
 
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
                             ) {
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Icon(
-                                            imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
-                                            tint = Color.White.copy(alpha = 0.8f),
-                                            modifier = Modifier
-                                                .size(13.dp)
-                                                .clickable {
-                                                    isSensitiveInfoMasked = !isSensitiveInfoMasked
-                                                    platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
-                                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(if (isGuru) "NIP" else "NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(
+                                                imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                                contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
+                                                tint = Color.White.copy(alpha = 0.8f),
+                                                modifier = Modifier
+                                                    .size(13.dp)
+                                                    .clickable {
+                                                        isSensitiveInfoMasked = !isSensitiveInfoMasked
+                                                        platformStorage.setString("pref_mask_sensitive_info", isSensitiveInfoMasked.toString())
+                                                    }
+                                            )
+                                        }
+                                        Text(
+                                            text = if (isSensitiveInfoMasked) "****" else (if (isGuru) nip else nis),
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
                                         )
                                     }
-                                    Text(
-                                        text = if (isSensitiveInfoMasked) "****" else (if (isGuru) nip else nis),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
+                                    Column {
+                                        Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Text(displayDetail, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                    }
+                                    Column {
+                                        Text("SEMESTER", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                        Text("Ganjil 2026/2027", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                                    }
                                 }
-                                Column {
-                                    Text(if (isGuru) "JABATAN" else "KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                    Text(displayDetail, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                                }
-                                Column {
-                                    Text("SEMESTER", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                    Text("Ganjil 2026/2027", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+
+                                if (!isGuru) {
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.2f),
+                                        shape = CircleShape,
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(CircleShape)
+                                            .clickable { isCardFlipped = true }
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Default.Sync,
+                                                contentDescription = "Lihat Kartu Ujian",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -421,7 +447,7 @@ fun HomeScreen(
                                             shape = RoundedCornerShape(6.dp)
                                         ) {
                                             Text(
-                                                text = "Kursi ${examCard?.posisi ?: "-"}",
+                                                text = examCard?.posisi ?: "-",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.ExtraBold,
                                                 color = DarkNavy,
@@ -461,33 +487,27 @@ fun HomeScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
                                     color = Color.White.copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.clickable { isCardFlipped = false }
+                                    shape = CircleShape,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .clickable { isCardFlipped = false }
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            Icons.Default.CreditCard,
-                                            contentDescription = null,
+                                            Icons.Default.Sync,
+                                            contentDescription = "Balik ke Kartu Pelajar",
                                             tint = Color.White,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(5.dp))
-                                        Text(
-                                            text = "Kembali ke Kartu Pelajar",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
