@@ -122,7 +122,7 @@ fun CalendarScreen(
                 title = {
                     Column {
                         Text(
-                            text = if (isGuru) "Kalender Jadwal Mengajar" else "Kalender Jadwal Pelajaran",
+                            text = if (isGuru) "Kalender Mengajar" else "Kalender",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkNavy
@@ -367,14 +367,14 @@ fun CalendarScreen(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Tidak Ada Jadwal Kegiatan",
+                            text = "Tidak Ada Agenda Kegiatan",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkNavy
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tidak ada sesi kelas atau agenda untuk tanggal yang dipilih.",
+                            text = "Tidak ada sesi kelas, ujian, atau agenda untuk tanggal yang dipilih.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             textAlign = TextAlign.Center
