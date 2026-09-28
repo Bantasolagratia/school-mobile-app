@@ -153,12 +153,14 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Student Identity Card (Flip Card)
+            val canFlipToExamCard = !isGuru && examCard?.isExamDay == true && (examCard?.eligible == true || examCard?.isBlacklisted == true)
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
-                if (!isCardFlipped) {
+                if (!isCardFlipped || !canFlipToExamCard) {
                     // Sisi Depan: Kartu Pelajar Digital / Kartu Identitas Guru
                     Box(
                         modifier = Modifier
@@ -188,8 +190,8 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // Tombol Flip Kartu Peserta Ujian HANYA muncul pada Hari H Ujian Massal
-                                    if (!isGuru && examCard?.isExamDay == true) {
+                                    // Tombol Flip Kartu Peserta Ujian HANYA muncul jika Hari H Ujian Massal DAN sudah dialokasikan / dicekal
+                                    if (canFlipToExamCard) {
                                         Surface(
                                             color = Color.White.copy(alpha = 0.22f),
                                             shape = CircleShape,
