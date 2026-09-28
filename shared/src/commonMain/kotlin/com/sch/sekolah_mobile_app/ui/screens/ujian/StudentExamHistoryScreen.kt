@@ -519,12 +519,12 @@ fun StudentExamHistoryScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Nilai Akhir", fontSize = 11.sp, color = SlateGray)
+                                        Text("Total Soal", fontSize = 11.sp, color = SlateGray)
                                         Text(
-                                            text = if (detail.hasUngradedEssay) "⏳ Menunggu" else "${detail.score}",
-                                            fontSize = 20.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = if (detail.hasUngradedEssay) Color(0xFFD97706) else if (detail.score >= 75) Color(0xFF059669) else Color(0xFFDC2626)
+                                            text = "${detail.totalSoal}",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = DarkNavy
                                         )
                                     }
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -583,7 +583,7 @@ fun StudentExamHistoryScreen(
                                                 shape = RoundedCornerShape(6.dp)
                                             ) {
                                                 Text(
-                                                    text = if (q.teacherScore != null) "Skor: ${q.teacherScore} / 10" else "Menunggu Nilai Guru",
+                                                    text = if (q.teacherScore != null) "✓ Telah Dinilai Guru" else "⏳ Menunggu Nilai Guru",
                                                     fontSize = 11.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = if (q.teacherScore != null) Color(0xFF059669) else Color(0xFFD97706),
@@ -775,16 +775,16 @@ private fun ExamHistoryCard(
                             )
                         }
                     }
-                    item.isAttended && item.score != null -> {
+                    item.isAttended -> {
                         Surface(
-                            color = if (item.score >= 75) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
+                            color = Color(0xFFECFDF5),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = "Nilai: ${item.score}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = if (item.score >= 75) Color(0xFF059669) else Color(0xFFDC2626),
+                                text = "✅ Selesai Dikerjakan",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF059669),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }

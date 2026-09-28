@@ -80,7 +80,7 @@ object ApiConfig {
         "${getBaseUrl()}/api/exam-history/student/$kodeMapel"
 
     fun getExamResultDetailUrl(resultId: String): String =
-        "${getBaseUrl()}/api/results/detail/$resultId"
+        "${getBaseUrl()}/api/ujian/result/detail/$resultId"
 
     fun getStudentMataPelajaranUrl(kelas: String? = null): String {
         val k = kelas?.trim()?.takeIf { it.isNotEmpty() }

@@ -111,6 +111,9 @@ fun ExamTakingScreen(
 
     // Finish Exam Dialog
     var showFinishConfirmation by remember { mutableStateOf(false) }
+    var submitResultData by remember { mutableStateOf<com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var showSubmitSuccessDialog by remember { mutableStateOf(false) }
 
     // Timer Countdown (Default 90 menit atau disesuaikan)
     var remainingSeconds by remember { mutableStateOf(90 * 60) }
@@ -1162,9 +1165,11 @@ fun ExamTakingScreen(
                 },
                 confirmButton = {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
-                            showFinishConfirmation = false
+                            isSubmitting = true
                             coroutineScope.launch {
+                                var submitResp: com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile? = null
                                 try {
                                     val mappedAnswers = mutableMapOf<String, String>()
                                     questions.forEachIndexed { idx, q ->
@@ -1176,7 +1181,7 @@ fun ExamTakingScreen(
                                         }
                                     }
                                     val elapsed = (90 * 60 - remainingSeconds).toLong().coerceAtLeast(0L)
-                                    ujianRepository.submitExam(
+                                    submitResp = ujianRepository.submitExam(
                                         scheduleId = exam.id ?: "",
                                         durationSeconds = elapsed,
                                         answers = mappedAnswers
@@ -1190,18 +1195,111 @@ fun ExamTakingScreen(
                                         )
                                     } catch (_: Exception) {}
                                 }
-                                releaseExamKiosk()
-                                onExamSubmitted()
+                                showFinishConfirmation = false
+                                isSubmitting = false
+                                submitResultData = submitResp
+                                showSubmitSuccessDialog = true
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
                     ) {
-                        Text("Ya, Kumpulkan")
+                        Text(if (isSubmitting) "Mengumpulkan..." else "Ya, Kumpulkan")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showFinishConfirmation = false }) {
+                    TextButton(
+                        enabled = !isSubmitting,
+                        onClick = { showFinishConfirmation = false }
+                    ) {
                         Text("Periksa Lagi")
+                    }
+                }
+            )
+        }
+
+        // 4b. Dialog Hasil Pengumpulan Ujian (Hanya tampil saat submit dan jika tidak ada uraian)
+        if (showSubmitSuccessDialog) {
+            val hasEssay = submitResultData?.hasUngradedEssay == true || questions.any { it.type == "URAIAN" }
+            AlertDialog(
+                onDismissRequest = { /* Must click button to dismiss and leave */ },
+                icon = {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF059669),
+                        modifier = Modifier.size(44.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "🎉 Ujian Berhasil Dikumpulkan!",
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy,
+                        fontSize = 17.sp,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (hasEssay) {
+                            Text(
+                                text = "Jawaban ujian Anda telah berhasil disimpan di sistem. Karena ujian ini memiliki soal bertipe Uraian, nilai akhir akan dipublikasikan setelah seluruh jawaban diperiksa dan dievaluasi oleh Guru Pengampu.",
+                                fontSize = 13.sp,
+                                color = SlateGray,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                        } else {
+                            Text(
+                                text = "Jawaban ujian Anda telah berhasil dievaluasi oleh sistem.",
+                                fontSize = 13.sp,
+                                color = SlateGray,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(12.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "NILAI ANDA",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF065F46)
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${submitResultData?.score ?: 0.0}",
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFF059669)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showSubmitSuccessDialog = false
+                            releaseExamKiosk()
+                            onExamSubmitted()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Kembali ke Beranda", fontWeight = FontWeight.Bold)
                     }
                 }
             )
