@@ -72,7 +72,8 @@ data class UserIdentity(
     val isStudent: Boolean = false,
     val isTeacher: Boolean = false,
     val isAdmin: Boolean = false,
-    val isGuardian: Boolean = false
+    val isGuardian: Boolean = false,
+    val fotoUrl: String? = null
 )
 
 @Serializable
