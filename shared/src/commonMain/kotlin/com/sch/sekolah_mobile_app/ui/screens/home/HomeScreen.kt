@@ -1,5 +1,6 @@
 package com.sch.sekolah_mobile_app.ui.screens.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -153,7 +154,8 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Student Identity Card (Flip Card)
-            val canFlipToExamCard = !isGuru && examCard?.isExamDay == true && (examCard?.eligible == true || examCard?.isBlacklisted == true)
+            // HANYA siswa resmi yang memiliki alokasi valid dan BUKAN blacklist yang memiliki kartu peserta ujian & tombol flip
+            val canFlipToExamCard = !isGuru && examCard?.isExamDay == true && examCard?.eligible == true && examCard?.isBlacklisted != true
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -190,7 +192,7 @@ fun HomeScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // Tombol Flip Kartu Peserta Ujian HANYA muncul jika Hari H Ujian Massal DAN sudah dialokasikan / dicekal
+                                    // Tombol Flip Kartu Peserta Ujian HANYA muncul jika peserta resmi (eligible) dan tidak dicekal
                                     if (canFlipToExamCard) {
                                         Surface(
                                             color = Color.White.copy(alpha = 0.22f),
@@ -212,14 +214,18 @@ fun HomeScreen(
                                     }
 
                                     Surface(
-                                        color = AccentAmber,
+                                        color = if (!isGuru && examCard?.isBlacklisted == true) Color(0xFFEF4444) else AccentAmber,
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Text(
-                                            text = if (isGuru) "GURU AKTIF" else "MURID AKTIF",
+                                            text = when {
+                                                isGuru -> "GURU AKTIF"
+                                                examCard?.isBlacklisted == true -> "DICEKAL DARI UJIAN"
+                                                else -> "MURID AKTIF"
+                                            },
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = DarkNavy,
+                                            color = if (!isGuru && examCard?.isBlacklisted == true) Color.White else DarkNavy,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
@@ -276,15 +282,12 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // Sisi Belakang: Kartu Peserta Ujian (Flip Card)
+                    // Sisi Belakang: Kartu Peserta Ujian Resmi (Flip Card)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                if (examCard?.isBlacklisted == true)
-                                    Brush.horizontalGradient(listOf(Color(0xFF991B1B), Color(0xFF7F1D1D)))
-                                else
-                                    Brush.horizontalGradient(listOf(Color(0xFF0F766E), Color(0xFF115E59)))
+                                Brush.horizontalGradient(listOf(Color(0xFF0F766E), Color(0xFF115E59)))
                             )
                             .padding(20.dp)
                     ) {
@@ -333,22 +336,14 @@ fun HomeScreen(
                                     }
 
                                     Surface(
-                                        color = when {
-                                            examCard?.isBlacklisted == true -> Color(0xFFEF4444)
-                                            examCard?.eligible == true -> AccentAmber
-                                            else -> Color.White.copy(alpha = 0.25f)
-                                        },
+                                        color = AccentAmber,
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Text(
-                                            text = when {
-                                                examCard?.isBlacklisted == true -> "DICEKAL / BLACKLIST"
-                                                examCard?.eligible == true -> "PESERTA RESMI"
-                                                else -> "BELUM TERJADWAL"
-                                            },
+                                            text = "PESERTA RESMI",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (examCard?.eligible == true) DarkNavy else Color.White,
+                                            color = DarkNavy,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
@@ -357,128 +352,136 @@ fun HomeScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            if (examCard?.isBlacklisted == true) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.25f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                            Text(
+                                text = examCard?.nama ?: displayName,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(
+                                        text = examCard?.nis?.toString() ?: nis,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                }
+                                Column {
+                                    Text("KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(
+                                        text = examCard?.kelas ?: displayDetail,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                }
+                                Column {
+                                    Text("RUANGAN", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(
+                                        text = examCard?.ruangan ?: "-",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("POSISI", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Surface(
+                                        color = AccentAmber,
+                                        shape = RoundedCornerShape(6.dp)
                                     ) {
-                                        Icon(
-                                            Icons.Default.Block,
-                                            contentDescription = null,
-                                            tint = Color(0xFFFCA5A5),
-                                            modifier = Modifier.size(28.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text(
-                                                text = "Akses Ujian Dicekal (Blacklist)",
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = examCard?.alasan?.let { "Alasan: $it" }
-                                                    ?: (examCard?.message ?: "Anda masuk daftar pencekalan ujian sekolah sehingga kartu peserta ujian tidak diterbitkan."),
-                                                fontSize = 11.sp,
-                                                color = Color.White.copy(alpha = 0.9f)
-                                            )
-                                        }
-                                    }
-                                }
-                            } else if (examCard?.eligible == true) {
-                                Text(
-                                    text = examCard?.nama ?: displayName,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text("NIS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
                                         Text(
-                                            text = examCard?.nis?.toString() ?: nis,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
+                                            text = examCard?.posisi ?: "-",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = DarkNavy,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                                         )
-                                    }
-                                    Column {
-                                        Text("KELAS", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                        Text(
-                                            text = examCard?.kelas ?: displayDetail,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White
-                                        )
-                                    }
-                                    Column {
-                                        Text("RUANGAN", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                        Text(
-                                            text = examCard?.ruangan ?: "-",
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text("POSISI", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
-                                        Surface(
-                                            color = AccentAmber,
-                                            shape = RoundedCornerShape(6.dp)
-                                        ) {
-                                            Text(
-                                                text = examCard?.posisi ?: "-",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = DarkNavy,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            } else {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                                ) {
-                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            Icons.Default.Info,
-                                            contentDescription = null,
-                                            tint = AccentAmber,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text(
-                                                text = "Belum Ada Alokasi Kursi",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                            Text(
-                                                text = examCard?.message ?: "Pembagian ruangan dan bangku ujian Anda sedang diproses oleh pihak sekolah.",
-                                                fontSize = 11.sp,
-                                                color = Color.White.copy(alpha = 0.85f)
-                                            )
-                                        }
                                     }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("UJIAN", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(
+                                        text = examCard?.judulUjian ?: examCard?.kategori ?: "Ujian Semester",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("SEMESTER", fontSize = 10.sp, color = Color.White.copy(alpha = 0.7f))
+                                    Text(
+                                        text = examCard?.semester ?: "Ganjil 2026/2027",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Alert Pencekalan Ujian (Blacklist) untuk Siswa
+            if (!isGuru && examCard?.isBlacklisted == true) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Surface(
+                    color = Color(0xFFFEF2F2),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Block,
+                            contentDescription = null,
+                            tint = Color(0xFFDC2626),
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Akses Ujian Dicekal (Blacklist)",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF991B1B)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = examCard?.alasan?.let { "Alasan pencekalan: $it." }
+                                    ?: "Siswa terdaftar dalam daftar pencekalan ujian sekolah.",
+                                fontSize = 11.sp,
+                                color = Color(0xFFB91C1C),
+                                lineHeight = 15.sp
+                            )
+                            Text(
+                                text = "Kartu peserta ujian tidak diterbitkan untuk siswa yang dicekal.",
+                                fontSize = 10.sp,
+                                color = Color(0xFF7F1D1D),
+                                fontWeight = FontWeight.Medium
+                            )
                         }
                     }
                 }
