@@ -45,6 +45,12 @@ object ApiConfig {
     fun getProfileUrl(): String =
         "${getBaseUrl()}/api/auth-flow/profile"
 
+    fun getVerifyUrl(): String =
+        "${getBaseUrl()}/api/auth-flow/verify"
+
+    fun getRegisterUrl(): String =
+        "${getBaseUrl()}/api/auth-flow/register"
+
     fun getGuruUrl(): String =
         "${getBaseUrl()}/api/management/guru"
 

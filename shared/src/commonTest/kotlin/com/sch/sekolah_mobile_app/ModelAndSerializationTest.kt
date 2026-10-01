@@ -78,5 +78,36 @@ class ModelAndSerializationTest {
         assertEquals("S", guru2.initials)
         assertEquals("Guru Pengajar", guru2.displayJabatan)
     }
+
+    @Test
+    fun testRegistrationModelsSerialization() {
+        val verifyReq = VerifyIdentityRequest(role = "MURID", identifier = "202610001")
+        val verifyJson = json.encodeToString(verifyReq)
+        assertTrue(verifyJson.contains("MURID"))
+        assertTrue(verifyJson.contains("202610001"))
+
+        val identResp = IdentityResponse(
+            found = true,
+            role = "MURID",
+            identifier = "202610001",
+            name = "Budi Santoso",
+            detail = "Kelas X-A"
+        )
+        val identJson = json.encodeToString(identResp)
+        val decoded = json.decodeFromString<IdentityResponse>(identJson)
+        assertTrue(decoded.found)
+        assertEquals("Budi Santoso", decoded.name)
+
+        val regReq = RegistrationRequest(
+            role = "MURID",
+            identifier = "202610001",
+            email = "budi@murid.sekolah.com",
+            password = "Password123!",
+            telp = "08123456789",
+            wa = "08123456789"
+        )
+        val regJson = json.encodeToString(regReq)
+        assertTrue(regJson.contains("budi@murid.sekolah.com"))
+    }
 }
 
