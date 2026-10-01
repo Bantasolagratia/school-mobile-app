@@ -2,7 +2,6 @@ package com.sch.sekolah_mobile_app.ui.screens.jadwal
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.util.Size
 import android.view.MotionEvent
 import android.view.ViewGroup
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,10 +37,14 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.zxing.*
 import com.google.zxing.common.GlobalHistogramBinarizer
 import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
 import com.sch.sekolah_mobile_app.ui.theme.PrimaryTeal
 import com.sch.sekolah_mobile_app.ui.theme.PrimaryTealContainer
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -71,9 +74,9 @@ actual fun PlatformCameraScanner(
         }
     }
 
-    // Debounce state to avoid multiple rapid scans of the same QR token
-    var lastScannedTime by remember { mutableStateOf(0L) }
-    var lastScannedCode by remember { mutableStateOf("") }
+    // Thread-safe debounce states for camera executor background thread
+    val lastScannedCodeRef = remember { AtomicReference("") }
+    val lastScannedTimeRef = remember { AtomicLong(0L) }
     val isScanningPaused = remember { AtomicBoolean(false) }
 
     Box(
@@ -107,15 +110,12 @@ actual fun PlatformCameraScanner(
                         try {
                             val cameraProvider = cameraProviderFuture.get()
 
-                            val preview = Preview.Builder()
-                                .build()
-                                .also {
-                                    it.setSurfaceProvider(previewView.surfaceProvider)
-                                }
+                            val preview = Preview.Builder().build().also {
+                                it.setSurfaceProvider(previewView.surfaceProvider)
+                            }
 
                             val imageAnalysis = ImageAnalysis.Builder()
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .setTargetResolution(Size(1280, 720))
                                 .build()
 
                             imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
@@ -124,18 +124,45 @@ actual fun PlatformCameraScanner(
                                     return@setAnalyzer
                                 }
 
+                                val mediaImage = imageProxy.image
+                                val rotation = imageProxy.imageInfo.rotationDegrees
                                 var detectedToken: String? = null
 
-                                // Engine 1: Pure in-memory ZXing (Instant, offline, 0 download dependency)
+                                // Engine 1: Embedded ZXing Reader (Immediate, offline, zero dependencies)
                                 try {
-                                    detectedToken = decodeZxing(imageProxy)
+                                    val plane = imageProxy.planes.getOrNull(0)
+                                    if (plane != null) {
+                                        val buffer = plane.buffer.duplicate()
+                                        buffer.rewind()
+                                        val width = imageProxy.width
+                                        val height = imageProxy.height
+                                        val rowStride = plane.rowStride
+
+                                        val yBytes = ByteArray(width * height)
+                                        if (rowStride == width) {
+                                            val bytesToRead = minOf(buffer.remaining(), width * height)
+                                            buffer.get(yBytes, 0, bytesToRead)
+                                        } else {
+                                            val rowBuffer = ByteArray(rowStride)
+                                            for (i in 0 until height) {
+                                                val bytesToRead = minOf(rowStride, buffer.remaining())
+                                                buffer.get(rowBuffer, 0, bytesToRead)
+                                                System.arraycopy(rowBuffer, 0, yBytes, i * width, width)
+                                            }
+                                        }
+
+                                        detectedToken = decodeZxing(yBytes, width, height, rotation)
+                                    }
                                 } catch (_: Exception) {}
 
                                 if (!detectedToken.isNullOrBlank()) {
                                     val now = System.currentTimeMillis()
-                                    if (detectedToken != lastScannedCode || now - lastScannedTime > 2500L) {
-                                        lastScannedCode = detectedToken
-                                        lastScannedTime = now
+                                    val prevCode = lastScannedCodeRef.get()
+                                    val prevTime = lastScannedTimeRef.get()
+
+                                    if (detectedToken != prevCode || now - prevTime > 2500L) {
+                                        lastScannedCodeRef.set(detectedToken)
+                                        lastScannedTimeRef.set(now)
                                         val tokenToSend = detectedToken
                                         ContextCompat.getMainExecutor(ctx).execute {
                                             onQrDetected(tokenToSend)
@@ -145,33 +172,36 @@ actual fun PlatformCameraScanner(
                                     return@setAnalyzer
                                 }
 
-                                // Engine 2: Google ML Kit Barcode Scanner
-                                val mediaImage = imageProxy.image
+                                // Engine 2: Google ML Kit Barcode Scanner (Concurrent fallback)
                                 if (mediaImage != null) {
-                                    val inputImage = InputImage.fromMediaImage(
-                                        mediaImage,
-                                        imageProxy.imageInfo.rotationDegrees
-                                    )
-                                    barcodeScanner.process(inputImage)
-                                        .addOnSuccessListener { barcodes ->
-                                            for (barcode in barcodes) {
-                                                val rawValue = barcode.rawValue
-                                                if (!rawValue.isNullOrBlank()) {
-                                                    val now = System.currentTimeMillis()
-                                                    if (rawValue != lastScannedCode || now - lastScannedTime > 2500L) {
-                                                        lastScannedCode = rawValue
-                                                        lastScannedTime = now
-                                                        ContextCompat.getMainExecutor(ctx).execute {
-                                                            onQrDetected(rawValue)
+                                    try {
+                                        val inputImage = InputImage.fromMediaImage(mediaImage, rotation)
+                                        barcodeScanner.process(inputImage)
+                                            .addOnSuccessListener { barcodes ->
+                                                for (barcode in barcodes) {
+                                                    val rawValue = barcode.rawValue
+                                                    if (!rawValue.isNullOrBlank()) {
+                                                        val now = System.currentTimeMillis()
+                                                        val prevCode = lastScannedCodeRef.get()
+                                                        val prevTime = lastScannedTimeRef.get()
+
+                                                        if (rawValue != prevCode || now - prevTime > 2500L) {
+                                                            lastScannedCodeRef.set(rawValue)
+                                                            lastScannedTimeRef.set(now)
+                                                            ContextCompat.getMainExecutor(ctx).execute {
+                                                                onQrDetected(rawValue)
+                                                            }
                                                         }
+                                                        break
                                                     }
-                                                    break
                                                 }
                                             }
-                                        }
-                                        .addOnCompleteListener {
-                                            imageProxy.close()
-                                        }
+                                            .addOnCompleteListener {
+                                                imageProxy.close()
+                                            }
+                                    } catch (_: Exception) {
+                                        imageProxy.close()
+                                    }
                                 } else {
                                     imageProxy.close()
                                 }
@@ -185,13 +215,30 @@ actual fun PlatformCameraScanner(
                                 imageAnalysis
                             )
 
+                            // Initial center auto-focus
+                            previewView.post {
+                                try {
+                                    val factory = previewView.meteringPointFactory
+                                    val cx = (previewView.width / 2f).coerceAtLeast(100f)
+                                    val cy = (previewView.height / 2f).coerceAtLeast(100f)
+                                    val initialAction = FocusMeteringAction.Builder(
+                                        factory.createPoint(cx, cy),
+                                        FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+                                    ).setAutoCancelDuration(3, TimeUnit.SECONDS).build()
+                                    camera.cameraControl.startFocusAndMetering(initialAction)
+                                } catch (_: Exception) {}
+                            }
+
                             // Tap-to-focus on preview view
                             previewView.setOnTouchListener { view, event ->
                                 if (event.action == MotionEvent.ACTION_UP) {
                                     try {
                                         val factory = previewView.meteringPointFactory
                                         val point = factory.createPoint(event.x, event.y)
-                                        val action = FocusMeteringAction.Builder(point).build()
+                                        val action = FocusMeteringAction.Builder(
+                                            point,
+                                            FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+                                        ).setAutoCancelDuration(4, TimeUnit.SECONDS).build()
                                         camera.cameraControl.startFocusAndMetering(action)
                                     } catch (_: Exception) {}
                                     view.performClick()
@@ -283,40 +330,11 @@ actual fun PlatformCameraScanner(
     }
 }
 
-private val zxingReader = MultiFormatReader().apply {
-    val hints = mapOf(
-        DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
-        DecodeHintType.TRY_HARDER to true,
-        DecodeHintType.CHARACTER_SET to "UTF-8"
-    )
-    setHints(hints)
-}
-
 /**
- * High performance local QR code decoder using ZXing with Y-plane byte rotation.
- * 100% offline, requires no Google Play Services models.
+ * High performance local QR code decoder using ZXing QRCodeReader.
+ * Supports standard binarization, histogram binarization for screen reflections, and inverted colors.
  */
-private fun decodeZxing(imageProxy: ImageProxy): String? {
-    val plane = imageProxy.planes.getOrNull(0) ?: return null
-    val buffer = plane.buffer
-    val width = imageProxy.width
-    val height = imageProxy.height
-    val rowStride = plane.rowStride
-    val rotation = imageProxy.imageInfo.rotationDegrees
-
-    val yBytes = ByteArray(width * height)
-    if (rowStride == width) {
-        val bytesToRead = minOf(buffer.remaining(), width * height)
-        buffer.get(yBytes, 0, bytesToRead)
-    } else {
-        val rowBuffer = ByteArray(rowStride)
-        for (i in 0 until height) {
-            val bytesToRead = minOf(rowStride, buffer.remaining())
-            buffer.get(rowBuffer, 0, bytesToRead)
-            System.arraycopy(rowBuffer, 0, yBytes, i * width, width)
-        }
-    }
-
+private fun decodeZxing(yBytes: ByteArray, width: Int, height: Int, rotation: Int): String? {
     val rotatedBytes: ByteArray
     val finalWidth: Int
     val finalHeight: Int
@@ -354,28 +372,48 @@ private fun decodeZxing(imageProxy: ImageProxy): String? {
         false
     )
 
+    val hints = mapOf(
+        DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+        DecodeHintType.TRY_HARDER to true,
+        DecodeHintType.CHARACTER_SET to "UTF-8"
+    )
+
+    val reader = QRCodeReader()
+
     // Pass 1: HybridBinarizer (Standard fast binarizer)
     try {
         val bitmap = BinaryBitmap(HybridBinarizer(source))
-        val result = zxingReader.decodeWithState(bitmap)
+        val result = reader.decode(bitmap, hints)
         if (!result.text.isNullOrBlank()) {
             return result.text
         }
     } catch (_: Exception) {
     } finally {
-        zxingReader.reset()
+        reader.reset()
     }
 
-    // Pass 2: GlobalHistogramBinarizer (Excellent for phone screen glare / low contrast)
+    // Pass 2: GlobalHistogramBinarizer (Optimized for phone screen glare / reflections)
     try {
         val bitmap = BinaryBitmap(GlobalHistogramBinarizer(source))
-        val result = zxingReader.decodeWithState(bitmap)
+        val result = reader.decode(bitmap, hints)
         if (!result.text.isNullOrBlank()) {
             return result.text
         }
     } catch (_: Exception) {
     } finally {
-        zxingReader.reset()
+        reader.reset()
+    }
+
+    // Pass 3: Inverted HybridBinarizer (In case dark mode/reversed background)
+    try {
+        val bitmap = BinaryBitmap(HybridBinarizer(source.invert()))
+        val result = reader.decode(bitmap, hints)
+        if (!result.text.isNullOrBlank()) {
+            return result.text
+        }
+    } catch (_: Exception) {
+    } finally {
+        reader.reset()
     }
 
     return null
