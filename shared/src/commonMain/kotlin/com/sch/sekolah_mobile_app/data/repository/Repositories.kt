@@ -116,6 +116,30 @@ class AuthRepository(
         return profile
     }
 
+    suspend fun verifyStudentIdentity(nis: String): IdentityResponse {
+        return apiClient.verifyIdentity("MURID", nis)
+    }
+
+    suspend fun registerStudent(
+        nis: String,
+        email: String,
+        password: String,
+        telp: String,
+        wa: String
+    ): UserProfileResponse {
+        apiClient.register(
+            RegistrationRequest(
+                role = "MURID",
+                identifier = nis.trim(),
+                email = email.trim(),
+                password = password,
+                telp = telp.trim().ifEmpty { null },
+                wa = wa.trim().ifEmpty { null }
+            )
+        )
+        return login(email.trim(), password)
+    }
+
     suspend fun performSilentRefresh(): Boolean {
         return refreshMutex.withLock {
             // 1. Validasi batas mutlak 14 hari

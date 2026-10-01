@@ -794,6 +794,44 @@ class ApiClient(
         }
         return response.body()
     }
+
+    suspend fun verifyIdentity(role: String, identifier: String): IdentityResponse {
+        val url = ApiConfig.getVerifyUrl()
+        val response = authHttpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(VerifyIdentityRequest(role = role.trim().uppercase(), identifier = identifier.trim()))
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Data identitas tidak ditemukan atau gagal diverifikasi."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        return response.body()
+    }
+
+    suspend fun register(request: RegistrationRequest) {
+        val url = ApiConfig.getRegisterUrl()
+        val response = authHttpClient.post(url) {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Registrasi gagal. Silakan coba lagi."
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+    }
 }
 
 

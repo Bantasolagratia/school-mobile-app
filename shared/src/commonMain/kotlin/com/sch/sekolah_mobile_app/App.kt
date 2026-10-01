@@ -35,6 +35,7 @@ import com.sch.sekolah_mobile_app.ui.screens.izin.StudentIzinListScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.StudentQrScannerScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherQrKioskScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
+import com.sch.sekolah_mobile_app.ui.screens.register.RegisterScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.MateriDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMapelScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMateriListScreen
@@ -50,6 +51,7 @@ import com.sch.sekolah_mobile_app.ui.theme.SekolahMobileTheme
 
 enum class ScreenState {
     LOGIN,
+    REGISTER,
     MAIN,
     EXAM_TAKING
 }
@@ -160,6 +162,24 @@ fun App() {
                             currentTab = NavigationTab.HOME
                             currentSubScreen = SubScreen.NONE
                             screenState = ScreenState.MAIN
+                        },
+                        onNavigateToRegister = {
+                            screenState = ScreenState.REGISTER
+                        }
+                    )
+                }
+
+                ScreenState.REGISTER -> {
+                    RegisterScreen(
+                        authRepository = authRepository,
+                        onRegisterSuccess = {
+                            currentProfile = authRepository.getCachedProfile()
+                            currentTab = NavigationTab.HOME
+                            currentSubScreen = SubScreen.NONE
+                            screenState = ScreenState.MAIN
+                        },
+                        onNavigateToLogin = {
+                            screenState = ScreenState.LOGIN
                         }
                     )
                 }
