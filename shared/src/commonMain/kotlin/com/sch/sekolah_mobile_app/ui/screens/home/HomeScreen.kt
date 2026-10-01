@@ -46,6 +46,7 @@ fun HomeScreen(
     onNavigateToMapel: () -> Unit = {},
     onNavigateToRaport: () -> Unit = {},
     onNavigateToJadwal: () -> Unit = {},
+    onNavigateToTeacherJadwal: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long = 0,
@@ -498,108 +499,254 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Main Featured Card: Direktori Guru (Modul Guru)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToGuru() },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Row(
+            if (isGuru) {
+                // Modul Guru: Menu paling atas adalah Kalender
+                Card(
                     modifier = Modifier
-                        .padding(18.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .clickable { onNavigateToJadwal() },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(PrimaryTealContainer),
-                        contentAlignment = Alignment.Center
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Groups,
-                            contentDescription = "Direktori Guru",
-                            tint = PrimaryTeal,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Direktori Guru",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DarkNavy
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryTealContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CalendarToday,
+                                contentDescription = "Kalender",
+                                tint = PrimaryTeal,
+                                modifier = Modifier.size(26.dp)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Surface(
-                                color = PrimaryTealContainer,
-                                shape = RoundedCornerShape(4.dp)
-                            ) {
-                                Text(
-                                    text = "Utama",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = OnPrimaryTealContainer,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                        Text(
-                            text = "Akses kontak WhatsApp, telepon, dan daftar pengajar sekolah",
-                            fontSize = 12.sp,
-                            color = SlateGray
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Kalender",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = PrimaryTealContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Akademik",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OnPrimaryTealContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Agenda kegiatan sekolah, kalender akademik & jadwal penting",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        }
+
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "Buka",
+                            tint = PrimaryTeal
                         )
                     }
-
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = "Buka",
-                        tint = PrimaryTeal
-                    )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-            // Additional feature cards (responsive 2-column if tablet/wide screen)
-            if (isWideScreen) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                // Menu Baru: Jadwal (Mengajar, Pengawas & QR Kiosk)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToTeacherJadwal() },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    QuickInfoCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.AutoMirrored.Filled.MenuBook,
-                        title = "Mata Pelajaran",
-                        subtitle = "Bahan ajar & materi bacaan",
-                        onClick = onNavigateToMapel
-                    )
-                    QuickInfoCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.Default.CalendarToday,
-                        title = if (isGuru) "Kalender Mengajar" else "Kalender",
-                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Agenda kelas, ujian & kegiatan",
-                        onClick = onNavigateToJadwal
-                    )
-                    QuickInfoCard(
-                        modifier = Modifier.weight(1f),
-                        icon = Icons.AutoMirrored.Filled.Assignment,
-                        title = "Tugas & Ujian",
-                        subtitle = "Status pengerjaan & jadwal ujian",
-                        onClick = onNavigateToUjian
-                    )
-                    if (!isGuru) {
+                    Row(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEDE9FE)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = "Jadwal",
+                                tint = Color(0xFF6D28D9),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Jadwal",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = Color(0xFFEDE9FE),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "KBM & Pengawas",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF6D28D9),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Jadwal mengajar, tugas pengawas ujian & presensi QR Kiosk",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        }
+
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "Buka",
+                            tint = Color(0xFF6D28D9)
+                        )
+                    }
+                }
+            } else {
+                // Siswa: Main Featured Card Direktori Guru
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToGuru() },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(18.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryTealContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Groups,
+                                contentDescription = "Direktori Guru",
+                                tint = PrimaryTeal,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Direktori Guru",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = PrimaryTealContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "Utama",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = OnPrimaryTealContainer,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            Text(
+                                text = "Akses kontak WhatsApp, telepon, dan daftar pengajar sekolah",
+                                fontSize = 12.sp,
+                                color = SlateGray
+                            )
+                        }
+
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "Buka",
+                            tint = PrimaryTeal
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Additional feature cards untuk Siswa (responsive 2-column if tablet/wide screen)
+                if (isWideScreen) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                            title = "Mata Pelajaran",
+                            subtitle = "Bahan ajar & materi bacaan",
+                            onClick = onNavigateToMapel
+                        )
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Default.CalendarToday,
+                            title = "Kalender",
+                            subtitle = "Agenda kelas, ujian & kegiatan",
+                            onClick = onNavigateToJadwal
+                        )
+                        QuickInfoCard(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.AutoMirrored.Filled.Assignment,
+                            title = "Tugas & Ujian",
+                            subtitle = "Status pengerjaan & jadwal ujian",
+                            onClick = onNavigateToUjian
+                        )
                         QuickInfoCard(
                             modifier = Modifier.weight(1f),
                             icon = Icons.Default.History,
@@ -614,38 +761,36 @@ fun HomeScreen(
                             subtitle = "Pengajuan & riwayat izin",
                             onClick = onNavigateToIzin
                         )
+                        if (isRaportModuleEnabled) {
+                            QuickInfoCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Assessment,
+                                title = "Rapor Semester",
+                                subtitle = "Capaian nilai & presensi",
+                                onClick = onNavigateToRaport
+                            )
+                        }
                     }
-                    if (isRaportModuleEnabled) {
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         QuickInfoCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Assessment,
-                            title = "Rapor Semester",
-                            subtitle = "Capaian nilai & presensi",
-                            onClick = onNavigateToRaport
+                            icon = Icons.AutoMirrored.Filled.MenuBook,
+                            title = "Mata Pelajaran",
+                            subtitle = "Bahan ajar & materi bacaan",
+                            onClick = onNavigateToMapel
                         )
-                    }
-                }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickInfoCard(
-                        icon = Icons.AutoMirrored.Filled.MenuBook,
-                        title = "Mata Pelajaran",
-                        subtitle = "Bahan ajar & materi bacaan",
-                        onClick = onNavigateToMapel
-                    )
-                    QuickInfoCard(
-                        icon = Icons.Default.CalendarToday,
-                        title = if (isGuru) "Kalender Mengajar" else "Kalender",
-                        subtitle = if (isGuru) "Agenda kelas & QR KBM" else "Agenda kelas, ujian & kegiatan",
-                        onClick = onNavigateToJadwal
-                    )
-                    QuickInfoCard(
-                        icon = Icons.AutoMirrored.Filled.Assignment,
-                        title = "Tugas & Ujian",
-                        subtitle = "Status pengerjaan & jadwal ujian",
-                        onClick = onNavigateToUjian
-                    )
-                    if (!isGuru) {
+                        QuickInfoCard(
+                            icon = Icons.Default.CalendarToday,
+                            title = "Kalender",
+                            subtitle = "Agenda kelas, ujian & kegiatan",
+                            onClick = onNavigateToJadwal
+                        )
+                        QuickInfoCard(
+                            icon = Icons.AutoMirrored.Filled.Assignment,
+                            title = "Tugas & Ujian",
+                            subtitle = "Status pengerjaan & jadwal ujian",
+                            onClick = onNavigateToUjian
+                        )
                         QuickInfoCard(
                             icon = Icons.Default.History,
                             title = "Riwayat Ujian & Nilai",
@@ -658,18 +803,18 @@ fun HomeScreen(
                             subtitle = "Pengajuan & riwayat izin siswa",
                             onClick = onNavigateToIzin
                         )
-                    }
-                    AnimatedVisibility(
-                        visible = isRaportModuleEnabled,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically()
-                    ) {
-                        QuickInfoCard(
-                            icon = Icons.Default.Assessment,
-                            title = "Rapor Semester",
-                            subtitle = "Capaian nilai & presensi",
-                            onClick = onNavigateToRaport
-                        )
+                        AnimatedVisibility(
+                            visible = isRaportModuleEnabled,
+                            enter = fadeIn() + expandVertically(),
+                            exit = fadeOut() + shrinkVertically()
+                        ) {
+                            QuickInfoCard(
+                                icon = Icons.Default.Assessment,
+                                title = "Rapor Semester",
+                                subtitle = "Capaian nilai & presensi",
+                                onClick = onNavigateToRaport
+                            )
+                        }
                     }
                 }
             }
@@ -695,14 +840,17 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Pengumuman Akademik",
+                            text = if (isGuru) "Pusat Jadwal & Presensi Guru" else "Pengumuman Akademik",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = DarkNavy
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Gunakan menu Direktori Guru untuk menghubungi wali kelas atau guru mata pelajaran terkait konsultasi belajar.",
+                            text = if (isGuru)
+                                "Gunakan menu Jadwal untuk melihat penugasan mengajar atau pengawas ujian, dan aktifkan QR presensi Kiosk saat sesi dimulai."
+                            else
+                                "Gunakan menu Direktori Guru untuk menghubungi wali kelas atau guru mata pelajaran terkait konsultasi belajar.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             lineHeight = 18.sp

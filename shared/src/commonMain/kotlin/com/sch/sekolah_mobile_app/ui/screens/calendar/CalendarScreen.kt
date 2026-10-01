@@ -167,7 +167,7 @@ fun CalendarScreen(
                 title = {
                     Column {
                         Text(
-                            text = if (isGuru) "Kalender Mengajar" else "Kalender",
+                            text = "Kalender",
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = DarkNavy
