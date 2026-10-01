@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
@@ -71,8 +70,6 @@ fun RegisterScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
-    var showHostDialog by remember { mutableStateOf(false) }
-    var hostText by remember { mutableStateOf(ApiConfig.getHost()) }
 
     fun resetForm(keepIdentifier: Boolean = false) {
         if (!keepIdentifier) {
@@ -644,69 +641,7 @@ fun RegisterScreen(
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Server Host Config Button
-                TextButton(
-                    onClick = {
-                        hostText = ApiConfig.getHost()
-                        showHostDialog = true
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Dns,
-                        contentDescription = "Server Host",
-                        tint = SlateGray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Host Server: ${ApiConfig.getHost()}",
-                        fontSize = 12.sp,
-                        color = SlateGray
-                    )
-                }
             }
         }
-    }
-
-    if (showHostDialog) {
-        AlertDialog(
-            onDismissRequest = { showHostDialog = false },
-            title = { Text("Konfigurasi Host Server") },
-            text = {
-                Column {
-                    Text(
-                        text = "Gunakan 10.0.2.2 untuk Android Emulator, localhost untuk iOS Simulator, atau IP LAN komputer Anda.",
-                        fontSize = 12.sp,
-                        color = SlateGray
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = hostText,
-                        onValueChange = { hostText = it },
-                        label = { Text("Host / IP Address") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        ApiConfig.setHost(hostText)
-                        showHostDialog = false
-                    }
-                ) {
-                    Text("Simpan")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showHostDialog = false }) {
-                    Text("Batal")
-                }
-            }
-        )
     }
 }
