@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import com.sch.sekolah_mobile_app.ui.screens.izin.CreateIzinScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.IzinDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.StudentIzinListScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.StudentQrScannerScreen
+import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherJadwalScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherQrKioskScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
 import com.sch.sekolah_mobile_app.ui.screens.register.RegisterScreen
@@ -65,6 +67,7 @@ enum class SubScreen {
     MATERI_DETAIL,
     RAPORT,
     CALENDAR,
+    TEACHER_JADWAL,
     TEACHER_QR_KIOSK,
     STUDENT_QR_SCANNER,
     NOTIFICATIONS,
@@ -76,6 +79,7 @@ enum class SubScreen {
 enum class NavigationTab(val label: String, val icon: ImageVector) {
     HOME("Beranda", Icons.Default.Home),
     GURU("Guru", Icons.Default.Groups),
+    JADWAL("Jadwal", Icons.Default.Schedule),
     PROFILE("Profil", Icons.Default.Person)
 }
 
@@ -105,6 +109,7 @@ fun App() {
     var selectedMateriId by remember { mutableStateOf<String?>(null) }
     var selectedJadwal by remember { mutableStateOf<Jadwal?>(null) }
     var selectedIzin by remember { mutableStateOf<SuratIzinItemMobile?>(null) }
+    var kioskReturnSubScreen by remember { mutableStateOf(SubScreen.NONE) }
     var unreadNotifCount by remember { mutableStateOf(0L) }
 
     // Sync remote config, SSE, dan hitung notifikasi saat user terautentikasi
@@ -296,11 +301,26 @@ fun App() {
                                 onNavigateBack = { currentSubScreen = SubScreen.NONE },
                                 onOpenTeacherKiosk = { j ->
                                     selectedJadwal = j
+                                    kioskReturnSubScreen = SubScreen.CALENDAR
                                     currentSubScreen = SubScreen.TEACHER_QR_KIOSK
                                 },
                                 onOpenStudentScanner = { j ->
                                     selectedJadwal = j
+                                    kioskReturnSubScreen = SubScreen.CALENDAR
                                     currentSubScreen = SubScreen.STUDENT_QR_SCANNER
+                                }
+                            )
+                        }
+
+                        SubScreen.TEACHER_JADWAL -> {
+                            TeacherJadwalScreen(
+                                profile = currentProfile,
+                                jadwalRepository = jadwalRepository,
+                                onNavigateBack = { currentSubScreen = SubScreen.NONE },
+                                onOpenKiosk = { j ->
+                                    selectedJadwal = j
+                                    kioskReturnSubScreen = SubScreen.TEACHER_JADWAL
+                                    currentSubScreen = SubScreen.TEACHER_QR_KIOSK
                                 }
                             )
                         }
@@ -312,10 +332,10 @@ fun App() {
                                     jadwal = j,
                                     profile = currentProfile,
                                     jadwalRepository = jadwalRepository,
-                                    onNavigateBack = { currentSubScreen = SubScreen.CALENDAR }
+                                    onNavigateBack = { currentSubScreen = kioskReturnSubScreen }
                                 )
                             } else {
-                                currentSubScreen = SubScreen.CALENDAR
+                                currentSubScreen = kioskReturnSubScreen
                             }
                         }
 
@@ -323,7 +343,7 @@ fun App() {
                             StudentQrScannerScreen(
                                 jadwal = selectedJadwal,
                                 jadwalRepository = jadwalRepository,
-                                onNavigateBack = { currentSubScreen = SubScreen.CALENDAR }
+                                onNavigateBack = { currentSubScreen = kioskReturnSubScreen }
                             )
                         }
 
@@ -376,6 +396,22 @@ fun App() {
                         }
 
                         SubScreen.NONE -> {
+                            val isCurrentGuru = currentProfile?.isRoleGuru == true
+                            val visibleTabs = remember(isCurrentGuru) {
+                                if (isCurrentGuru) {
+                                    listOf(NavigationTab.HOME, NavigationTab.JADWAL, NavigationTab.PROFILE)
+                                } else {
+                                    listOf(NavigationTab.HOME, NavigationTab.GURU, NavigationTab.PROFILE)
+                                }
+                            }
+
+                            // Ensure teacher is not left on GURU tab
+                            LaunchedEffect(isCurrentGuru) {
+                                if (isCurrentGuru && currentTab == NavigationTab.GURU) {
+                                    currentTab = NavigationTab.HOME
+                                }
+                            }
+
                             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                                 val isTabletOrWide = maxWidth >= 600.dp
 
@@ -387,7 +423,7 @@ fun App() {
                                             contentColor = PrimaryTeal
                                         ) {
                                             Spacer(modifier = Modifier.height(16.dp))
-                                            NavigationTab.entries.forEach { tab ->
+                                            visibleTabs.forEach { tab ->
                                                 NavigationRailItem(
                                                     selected = currentTab == tab,
                                                     onClick = { currentTab = tab },
@@ -407,6 +443,7 @@ fun App() {
                                                 authRepository = authRepository,
                                                 guruRepository = guruRepository,
                                                 ujianRepository = ujianRepository,
+                                                jadwalRepository = jadwalRepository,
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
@@ -418,6 +455,16 @@ fun App() {
                                                     }
                                                 },
                                                 onNavigateToJadwal = { currentSubScreen = SubScreen.CALENDAR },
+                                                onNavigateToTeacherJadwal = {
+                                                    if (isCurrentGuru) {
+                                                        currentTab = NavigationTab.JADWAL
+                                                    }
+                                                },
+                                                onOpenTeacherKiosk = { j ->
+                                                    selectedJadwal = j
+                                                    kioskReturnSubScreen = SubScreen.NONE
+                                                    currentSubScreen = SubScreen.TEACHER_QR_KIOSK
+                                                },
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
                                                 onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
@@ -436,7 +483,7 @@ fun App() {
                                                 containerColor = MaterialTheme.colorScheme.surface,
                                                 tonalElevation = 4.dp
                                             ) {
-                                                NavigationTab.entries.forEach { tab ->
+                                                visibleTabs.forEach { tab ->
                                                     NavigationBarItem(
                                                         selected = currentTab == tab,
                                                         onClick = { currentTab = tab },
@@ -461,6 +508,7 @@ fun App() {
                                                 authRepository = authRepository,
                                                 guruRepository = guruRepository,
                                                 ujianRepository = ujianRepository,
+                                                jadwalRepository = jadwalRepository,
                                                 profile = currentProfile,
                                                 onNavigateToGuru = { currentTab = NavigationTab.GURU },
                                                 onNavigateToUjian = { currentSubScreen = SubScreen.UJIAN_LIST },
@@ -472,6 +520,16 @@ fun App() {
                                                     }
                                                 },
                                                 onNavigateToJadwal = { currentSubScreen = SubScreen.CALENDAR },
+                                                onNavigateToTeacherJadwal = {
+                                                    if (isCurrentGuru) {
+                                                        currentTab = NavigationTab.JADWAL
+                                                    }
+                                                },
+                                                onOpenTeacherKiosk = { j ->
+                                                    selectedJadwal = j
+                                                    kioskReturnSubScreen = SubScreen.NONE
+                                                    currentSubScreen = SubScreen.TEACHER_QR_KIOSK
+                                                },
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
                                                 onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
@@ -498,6 +556,7 @@ private fun MainContent(
     authRepository: AuthRepository,
     guruRepository: GuruRepository,
     ujianRepository: UjianRepository,
+    jadwalRepository: JadwalRepository,
     profile: UserProfileResponse?,
     onNavigateToGuru: () -> Unit,
     onNavigateToUjian: () -> Unit,
@@ -505,6 +564,8 @@ private fun MainContent(
     onNavigateToMapel: () -> Unit,
     onNavigateToRaport: () -> Unit,
     onNavigateToJadwal: () -> Unit,
+    onNavigateToTeacherJadwal: () -> Unit = {},
+    onOpenTeacherKiosk: (Jadwal) -> Unit = {},
     onNavigateToNotifications: () -> Unit,
     onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long,
@@ -520,6 +581,7 @@ private fun MainContent(
                 onNavigateToMapel = onNavigateToMapel,
                 onNavigateToRaport = onNavigateToRaport,
                 onNavigateToJadwal = onNavigateToJadwal,
+                onNavigateToTeacherJadwal = onNavigateToTeacherJadwal,
                 onNavigateToNotifications = onNavigateToNotifications,
                 onNavigateToIzin = onNavigateToIzin,
                 unreadNotifCount = unreadNotifCount,
@@ -531,6 +593,14 @@ private fun MainContent(
                 guruRepository = guruRepository,
                 profile = profile,
                 onNavigateBack = null
+            )
+        }
+        NavigationTab.JADWAL -> {
+            TeacherJadwalScreen(
+                profile = profile,
+                jadwalRepository = jadwalRepository,
+                onNavigateBack = null,
+                onOpenKiosk = onOpenTeacherKiosk
             )
         }
         NavigationTab.PROFILE -> {
