@@ -24,8 +24,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.*
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
+import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.isScheduleOnDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -125,9 +127,7 @@ fun CalendarScreen(
 
     val dailySchedules = remember(allSchedules, selectedDateString, selectedFilterCategory) {
         allSchedules.filter { j ->
-            val matchDate = j.waktuMulai?.startsWith(selectedDateString) == true ||
-                j.waktu?.startsWith(selectedDateString) == true ||
-                j.waktu?.contains(selectedDateString) == true
+            val matchDate = isScheduleOnDate(selectedDateString, j)
             val matchCategory = when (selectedFilterCategory) {
                 "MURID" -> !j.isCategoryGuru
                 "GURU" -> j.isCategoryGuru
@@ -318,7 +318,7 @@ fun CalendarScreen(
                                         }
 
                                         val hasSchedule = allSchedules.any { j ->
-                                            j.waktuMulai?.startsWith(dayDateStr) == true || j.waktu?.startsWith(dayDateStr) == true
+                                            isScheduleOnDate(dayDateStr, j)
                                         }
 
                                         Box(

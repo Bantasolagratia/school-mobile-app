@@ -28,6 +28,7 @@ import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.isScheduleOnDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -88,9 +89,7 @@ fun TeacherJadwalScreen(
     }
 
     fun isTodaySchedule(j: Jadwal): Boolean {
-        return j.waktuMulai?.startsWith(todayDateStr) == true ||
-                j.waktu?.startsWith(todayDateStr) == true ||
-                j.waktu?.contains(todayDateStr) == true
+        return isScheduleOnDate(todayDateStr, j)
     }
 
     // Counts
