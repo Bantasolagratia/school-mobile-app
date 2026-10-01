@@ -117,7 +117,11 @@ class AuthRepository(
     }
 
     suspend fun verifyStudentIdentity(nis: String): IdentityResponse {
-        return apiClient.verifyIdentity("MURID", nis)
+        return verifyIdentity("MURID", nis)
+    }
+
+    suspend fun verifyIdentity(role: String, identifier: String): IdentityResponse {
+        return apiClient.verifyIdentity(role.trim().uppercase(), identifier.trim())
     }
 
     suspend fun registerStudent(
@@ -127,10 +131,21 @@ class AuthRepository(
         telp: String,
         wa: String
     ): UserProfileResponse {
+        return registerUser("MURID", nis, email, password, telp, wa)
+    }
+
+    suspend fun registerUser(
+        role: String,
+        identifier: String,
+        email: String,
+        password: String,
+        telp: String,
+        wa: String
+    ): UserProfileResponse {
         apiClient.register(
             RegistrationRequest(
-                role = "MURID",
-                identifier = nis.trim(),
+                role = role.trim().uppercase(),
+                identifier = identifier.trim(),
                 email = email.trim(),
                 password = password,
                 telp = telp.trim().ifEmpty { null },
