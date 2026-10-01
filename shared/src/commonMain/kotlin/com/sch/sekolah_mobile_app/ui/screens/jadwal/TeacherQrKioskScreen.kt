@@ -2,6 +2,7 @@ package com.sch.sekolah_mobile_app.ui.screens.jadwal
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +32,7 @@ import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamKioskEffect
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.screens.ujian.releaseExamKiosk
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.delay
@@ -76,9 +78,18 @@ fun TeacherQrKioskScreen(
         onViolationDetected = { _ -> }
     )
 
+    val isEnded = remember(jadwal) {
+        isSchedulePast(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu) || "SELESAI".equals(jadwal.status, ignoreCase = true)
+    }
+
     // Function to generate new rolling QR token
     suspend fun refreshQrToken() {
         if (scheduleId.isBlank()) return
+        if (isEnded) {
+            qrErrorMessage = "Jadwal kegiatan telah berakhir. Presensi QR telah ditutup."
+            isLoadingQr = false
+            return
+        }
         try {
             isLoadingQr = true
             qrErrorMessage = null
@@ -93,12 +104,15 @@ fun TeacherQrKioskScreen(
     }
 
     // Initial load
-    LaunchedEffect(scheduleId) {
-        refreshQrToken()
+    LaunchedEffect(scheduleId, isEnded) {
+        if (!isEnded) {
+            refreshQrToken()
+        }
     }
 
     // Rolling QR Timer (re-generates every interval)
-    LaunchedEffect(scheduleId) {
+    LaunchedEffect(scheduleId, isEnded) {
+        if (isEnded) return@LaunchedEffect
         while (isActive) {
             delay(1000)
             if (secondsRemaining > 1) {
@@ -290,64 +304,95 @@ fun TeacherQrKioskScreen(
                             modifier = Modifier
                                 .size(10.dp)
                                 .clip(CircleShape)
-                                .background(if (secondsRemaining > 5) PrimaryTeal else AccentAmber)
+                                .background(if (isEnded) SlateGray else if (secondsRemaining > 5) PrimaryTeal else AccentAmber)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Dynamic Rolling QR • Berganti dalam ${secondsRemaining}d",
+                            text = if (isEnded) "Sesi Jadwal Telah Berakhir" else "Dynamic Rolling QR • Berganti dalam ${secondsRemaining}d",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = DarkNavy
+                            color = if (isEnded) SlateGray else DarkNavy
                         )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // QR Code Canvas or Loading State
-                    val currentToken = qrPayload?.token
-                    if (!currentToken.isNullOrBlank()) {
+                    if (isEnded) {
                         Box(
                             modifier = Modifier
                                 .size(260.dp)
-                                .padding(8.dp),
+                                .background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
+                                .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            QrCodeView(
-                                content = currentToken,
-                                modifier = Modifier.fillMaxSize(),
-                                backgroundColor = Color.White,
-                                codeColor = Color.Black
-                            )
-                        }
-                    } else if (isLoadingQr) {
-                        Box(
-                            modifier = Modifier
-                                .size(260.dp)
-                                .background(SurfaceVariantColor, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = PrimaryTeal)
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(20.dp)
+                            ) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = SlateGray, modifier = Modifier.size(48.dp))
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Jadwal Telah Berakhir",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = DarkNavy
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Waktu sesi presensi untuk kegiatan ini telah berakhir. Kode QR dinonaktifkan.",
+                                    fontSize = 12.sp,
+                                    color = SlateGray,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .size(260.dp)
-                                .background(SurfaceVariantColor, RoundedCornerShape(12.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = qrErrorMessage ?: "QR Belum Tersedia",
-                                color = ErrorRed,
-                                fontSize = 13.sp,
-                                textAlign = TextAlign.Center
-                            )
+                        // QR Code Canvas or Loading State
+                        val currentToken = qrPayload?.token
+                        if (!currentToken.isNullOrBlank()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(260.dp)
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                QrCodeView(
+                                    content = currentToken,
+                                    modifier = Modifier.fillMaxSize(),
+                                    backgroundColor = Color.White,
+                                    codeColor = Color.Black
+                                )
+                            }
+                        } else if (isLoadingQr) {
+                            Box(
+                                modifier = Modifier
+                                    .size(260.dp)
+                                    .background(SurfaceVariantColor, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = PrimaryTeal)
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(260.dp)
+                                    .background(SurfaceVariantColor, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = qrErrorMessage ?: "QR Belum Tersedia",
+                                    color = ErrorRed,
+                                    fontSize = 13.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "Arahkan kamera HP Siswa ke kode QR di atas untuk presensi kehadiran KBM.",
+                        text = if (isEnded) "Sesi presensi untuk jadwal ini sudah ditutup otomatis." else "Arahkan kamera HP Siswa ke kode QR di atas untuk presensi kehadiran KBM.",
                         fontSize = 11.sp,
                         color = SlateGray,
                         textAlign = TextAlign.Center,

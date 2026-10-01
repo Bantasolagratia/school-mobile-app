@@ -22,3 +22,14 @@ actual fun getCurrentWibDateTime(): Pair<String, String> {
 
 actual fun getCurrentEpochMillis(): Long = (platform.Foundation.NSDate().timeIntervalSince1970 * 1000.0).toLong()
 
+actual fun isIsoTimestampPast(isoString: String?): Boolean {
+    if (isoString.isNullOrBlank()) return false
+    return try {
+        val formatter = platform.Foundation.NSISO8601DateFormatter()
+        val date = formatter.dateFromString(isoString.trim()) ?: return false
+        date.timeIntervalSinceNow < 0
+    } catch (_: Exception) {
+        false
+    }
+}
+

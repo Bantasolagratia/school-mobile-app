@@ -8,6 +8,40 @@ expect fun getCurrentWibDateTime(): Pair<String, String>
 
 expect fun getCurrentEpochMillis(): Long
 
+expect fun isIsoTimestampPast(isoString: String?): Boolean
+
+/**
+ * Checks whether the schedule has already ended.
+ * Returns true if the end time has passed.
+ */
+fun isSchedulePast(waktuSelesai: String?, waktuMulai: String? = null, waktu: String? = null): Boolean {
+    val targetEndTime = waktuSelesai?.trim()
+    if (!targetEndTime.isNullOrBlank()) {
+        if (targetEndTime.contains("T")) {
+            return isIsoTimestampPast(targetEndTime)
+        }
+        // If it's a plain time HH:mm
+        val (todayStr, nowTimeStr) = getCurrentWibDateTime()
+        val scheduleDate = extractScheduleDate(waktuMulai) ?: extractScheduleDate(waktu)
+        if (scheduleDate != null) {
+            if (scheduleDate < todayStr) return true
+            if (scheduleDate > todayStr) return false
+        }
+        val endHhMm = formatScheduleTime(targetEndTime)
+        if (endHhMm != "--:--") {
+            return endHhMm < nowTimeStr
+        }
+    }
+
+    // Fallback on start time
+    val targetStartTime = (waktuMulai ?: waktu)?.trim()
+    if (!targetStartTime.isNullOrBlank() && targetStartTime.contains("T")) {
+        return isIsoTimestampPast(targetStartTime)
+    }
+
+    return false
+}
+
 /**
  * Strips raw ISO/UTC markers (like .000Z, 00Z, T) and formats time as HH:mm cleanly.
  */
