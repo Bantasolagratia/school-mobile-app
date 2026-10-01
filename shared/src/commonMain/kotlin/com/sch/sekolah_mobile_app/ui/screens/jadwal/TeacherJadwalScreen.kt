@@ -28,6 +28,7 @@ import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -315,6 +316,8 @@ private fun TeacherJadwalCard(
     isPengawas: Boolean,
     onOpenKiosk: () -> Unit
 ) {
+    val isEnded = isSchedulePast(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu) || "SELESAI".equals(jadwal.status, ignoreCase = true)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -379,16 +382,18 @@ private fun TeacherJadwalCard(
                     }
                 }
 
+                val isEnded = isSchedulePast(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu) || "SELESAI".equals(jadwal.status, ignoreCase = true)
+
                 // Status Badge
                 Surface(
-                    color = Color(0xFFF1F5F9),
+                    color = if (isEnded) Color(0xFFF1F5F9) else if ("PUBLISHED".equals(jadwal.status, ignoreCase = true)) Color(0xFFDCFCE7) else Color(0xFFF1F5F9),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
-                        text = jadwal.status ?: "TERJADWAL",
+                        text = if (isEnded) "SELESAI" else (jadwal.status ?: "TERJADWAL"),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = SlateGray,
+                        color = if (isEnded) SlateGray else if ("PUBLISHED".equals(jadwal.status, ignoreCase = true)) Color(0xFF15803D) else SlateGray,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }
@@ -496,24 +501,48 @@ private fun TeacherJadwalCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Button: Buka Presensi QR (Kiosk)
-            Button(
-                onClick = onOpenKiosk,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isPengawas) Color(0xFF6D28D9) else PrimaryTeal
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-            ) {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Buka Presensi QR (Kiosk)",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            // Action Button: Buka Presensi QR (Kiosk) or Disabled if Ended
+            if (isEnded) {
+                Button(
+                    onClick = {},
+                    enabled = false,
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = Color(0xFFF1F5F9),
+                        disabledContentColor = SlateGray
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateGray)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Jadwal Telah Berakhir",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SlateGray
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onOpenKiosk,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isPengawas) Color(0xFF6D28D9) else PrimaryTeal
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(46.dp)
+                ) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Buka Presensi QR (Kiosk)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

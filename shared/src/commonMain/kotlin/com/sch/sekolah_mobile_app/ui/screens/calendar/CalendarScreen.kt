@@ -26,6 +26,7 @@ import com.sch.sekolah_mobile_app.data.model.*
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -618,31 +619,67 @@ private fun ScheduleCardItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val isEnded = isSchedulePast(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu) || "SELESAI".equals(jadwal.status, ignoreCase = true)
+
             // Action Buttons based on Role
             if (isGuru) {
                 if (!jadwal.isCategoryGuru) {
-                    Button(
-                        onClick = onOpenKiosk,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Tunjukkan QR Presensi (Kiosk)")
+                    if (isEnded) {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            colors = ButtonDefaults.buttonColors(
+                                disabledContainerColor = Color(0xFFF1F5F9),
+                                disabledContentColor = SlateGray
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateGray)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Jadwal Telah Berakhir", color = SlateGray)
+                        }
+                    } else {
+                        Button(
+                            onClick = onOpenKiosk,
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.QrCode, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Tunjukkan QR Presensi (Kiosk)")
+                        }
                     }
                 }
             } else {
                 // Murid Action Button
-                Button(
-                    onClick = onOpenScanner,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Scan QR Absensi")
+                if (isEnded) {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                        colors = ButtonDefaults.buttonColors(
+                            disabledContainerColor = Color(0xFFF1F5F9),
+                            disabledContentColor = SlateGray
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp), tint = SlateGray)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sesi Presensi Telah Berakhir", color = SlateGray)
+                    }
+                } else {
+                    Button(
+                        onClick = onOpenScanner,
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Scan QR Absensi")
+                    }
                 }
             }
         }
