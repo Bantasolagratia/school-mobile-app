@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.Jadwal
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
+import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
+import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -462,13 +464,13 @@ private fun TeacherJadwalCard(
                 Icon(Icons.Default.AccessTime, contentDescription = null, tint = SlateGray, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "${formatWaktu(jadwal.waktuMulai)} - ${formatWaktu(jadwal.waktuSelesai)} WIB",
+                    text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleTime(jadwal.waktuSelesai)} WIB",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkNavy
                 )
 
-                val datePart = extractDate(jadwal.waktuMulai) ?: extractDate(jadwal.waktu)
+                val datePart = extractScheduleDate(jadwal.waktuMulai) ?: extractScheduleDate(jadwal.waktu)
                 if (datePart != null) {
                     Spacer(modifier = Modifier.width(12.dp))
                     Icon(Icons.Default.CalendarToday, contentDescription = null, tint = SlateGray, modifier = Modifier.size(13.dp))
@@ -517,18 +519,3 @@ private fun TeacherJadwalCard(
     }
 }
 
-private fun formatWaktu(w: String?): String {
-    if (w.isNullOrBlank()) return "--:--"
-    if (w.contains("T")) {
-        val timePart = w.substringAfter("T").substringBefore("Z").substringBefore("+")
-        return timePart.take(5)
-    }
-    return w.take(5)
-}
-
-private fun extractDate(w: String?): String? {
-    if (w.isNullOrBlank()) return null
-    if (w.contains("T")) return w.substringBefore("T")
-    if (w.length >= 10 && w[4] == '-' && w[7] == '-') return w.take(10)
-    return null
-}

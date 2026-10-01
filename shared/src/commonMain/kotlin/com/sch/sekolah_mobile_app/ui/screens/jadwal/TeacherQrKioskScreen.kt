@@ -30,6 +30,7 @@ import com.sch.sekolah_mobile_app.data.model.QrPayloadMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamKioskEffect
+import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.releaseExamKiosk
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.delay
@@ -246,7 +247,7 @@ fun TeacherQrKioskScreen(
                         Icon(Icons.Default.Schedule, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${jadwal.waktuMulai ?: "07:30"} - ${jadwal.waktuSelesai ?: "09:00"} WIB",
+                            text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleTime(jadwal.waktuSelesai)} WIB",
                             fontSize = 13.sp,
                             color = DarkNavy
                         )
