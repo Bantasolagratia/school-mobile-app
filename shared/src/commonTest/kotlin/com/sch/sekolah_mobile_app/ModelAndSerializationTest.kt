@@ -108,6 +108,23 @@ class ModelAndSerializationTest {
         )
         val regJson = json.encodeToString(regReq)
         assertTrue(regJson.contains("budi@murid.sekolah.com"))
+
+        val guruVerifyReq = VerifyIdentityRequest(role = "GURU", identifier = "19850101-201001-1-001")
+        val guruVerifyJson = json.encodeToString(guruVerifyReq)
+        assertTrue(guruVerifyJson.contains("GURU"))
+        assertTrue(guruVerifyJson.contains("19850101-201001-1-001"))
+
+        val guruRegReq = RegistrationRequest(
+            role = "GURU",
+            identifier = "19850101-201001-1-001",
+            email = "ahmad@guru.sekolah.com",
+            password = "Password123!",
+            telp = "08129876543",
+            wa = "08129876543"
+        )
+        val guruRegJson = json.encodeToString(guruRegReq)
+        assertTrue(guruRegJson.contains("ahmad@guru.sekolah.com"))
+        assertTrue(guruRegJson.contains("GURU"))
     }
 }
 

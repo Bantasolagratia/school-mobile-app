@@ -10,9 +10,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -40,6 +42,11 @@ import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
 
+enum class RegistrationRole(val code: String, val title: String) {
+    MURID("MURID", "Siswa"),
+    GURU("GURU", "Guru")
+}
+
 @Composable
 fun RegisterScreen(
     authRepository: AuthRepository,
@@ -48,7 +55,8 @@ fun RegisterScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    var nis by remember { mutableStateOf("") }
+    var selectedRole by remember { mutableStateOf(RegistrationRole.MURID) }
+    var identifier by remember { mutableStateOf("") }
     var verifiedPerson by remember { mutableStateOf<IdentityResponse?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
 
@@ -66,15 +74,42 @@ fun RegisterScreen(
     var showHostDialog by remember { mutableStateOf(false) }
     var hostText by remember { mutableStateOf(ApiConfig.getHost()) }
 
-    fun handleVerifyNis() {
-        val cleanNis = nis.trim()
-        if (cleanNis.isBlank()) {
-            errorMessage = "Nomor Induk Siswa (NIS) wajib diisi."
+    fun resetForm(keepIdentifier: Boolean = false) {
+        if (!keepIdentifier) {
+            identifier = ""
+        }
+        verifiedPerson = null
+        email = ""
+        telp = ""
+        wa = ""
+        password = ""
+        confirmPassword = ""
+        errorMessage = null
+        successMessage = null
+    }
+
+    fun handleVerify() {
+        val cleanId = identifier.trim()
+        if (cleanId.isBlank()) {
+            errorMessage = if (selectedRole == RegistrationRole.MURID) {
+                "Nomor Induk Siswa (NIS) wajib diisi."
+            } else {
+                "Nomor Induk Pegawai (NIP) Guru wajib diisi."
+            }
             return
         }
-        if (!cleanNis.all { it.isDigit() } || cleanNis.length < 4 || cleanNis.length > 20) {
-            errorMessage = "Format NIS tidak valid. NIS hanya boleh berisi angka (4-20 digit)."
-            return
+
+        if (selectedRole == RegistrationRole.MURID) {
+            if (!cleanId.all { it.isDigit() } || cleanId.length < 4 || cleanId.length > 20) {
+                errorMessage = "Format NIS tidak valid. NIS hanya boleh berisi angka (4-20 digit)."
+                return
+            }
+        } else {
+            val nipPattern = Regex("^[0-9A-Za-z\\-]{4,30}$")
+            if (!nipPattern.matches(cleanId)) {
+                errorMessage = "Format NIP tidak valid. NIP hanya boleh berisi huruf, angka, atau tanda minus (-) (4-30 karakter)."
+                return
+            }
         }
 
         errorMessage = null
@@ -83,16 +118,17 @@ fun RegisterScreen(
 
         coroutineScope.launch {
             try {
-                val result = authRepository.verifyStudentIdentity(cleanNis)
+                val result = authRepository.verifyIdentity(selectedRole.code, cleanId)
                 verifiedPerson = result
                 telp = result.telp ?: ""
                 wa = result.wa ?: result.telp ?: ""
-                successMessage = "Identitas ditemukan: ${result.name} (${result.detail ?: "Siswa"})"
+                successMessage = "Identitas ditemukan: ${result.name} (${result.detail ?: selectedRole.title})"
                 isVerifying = false
             } catch (e: Exception) {
                 isVerifying = false
                 verifiedPerson = null
-                errorMessage = e.message ?: "Data siswa tidak ditemukan di sistem sekolah."
+                val roleLabel = if (selectedRole == RegistrationRole.MURID) "siswa" else "guru"
+                errorMessage = e.message ?: "Data $roleLabel tidak ditemukan di sistem sekolah."
             }
         }
     }
@@ -103,13 +139,14 @@ fun RegisterScreen(
 
         val currentVerified = verifiedPerson
         if (currentVerified == null) {
-            errorMessage = "Silakan periksa dan verifikasi NIS Anda terlebih dahulu."
+            val idLabel = if (selectedRole == RegistrationRole.MURID) "NIS" else "NIP"
+            errorMessage = "Silakan periksa dan verifikasi $idLabel Anda terlebih dahulu."
             return
         }
 
         val cleanEmail = email.trim()
         if (cleanEmail.isBlank()) {
-            errorMessage = "Email siswa wajib diisi."
+            errorMessage = "Email wajib diisi."
             return
         }
         if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
@@ -130,8 +167,9 @@ fun RegisterScreen(
         isLoading = true
         coroutineScope.launch {
             try {
-                authRepository.registerStudent(
-                    nis = currentVerified.identifier ?: nis.trim(),
+                authRepository.registerUser(
+                    role = selectedRole.code,
+                    identifier = currentVerified.identifier ?: identifier.trim(),
                     email = cleanEmail,
                     password = password,
                     telp = telp.trim(),
@@ -176,7 +214,7 @@ fun RegisterScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.School,
+                        imageVector = if (selectedRole == RegistrationRole.MURID) Icons.Default.School else Icons.Default.Groups,
                         contentDescription = "Logo",
                         tint = PrimaryTeal,
                         modifier = Modifier.size(38.dp)
@@ -186,20 +224,76 @@ fun RegisterScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Aktivasi Akun Siswa",
+                    text = "Aktivasi Akun ${selectedRole.title}",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = DarkNavy
                 )
 
                 Text(
-                    text = "Pendaftaran & Aktivasi Portal Murid Sekolah",
+                    text = "Pendaftaran & Aktivasi Portal Sekolah",
                     fontSize = 13.sp,
                     color = SlateGray,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Role Selector Tabs (Siswa / Guru)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = SurfaceVariantColor
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(4.dp)
+                    ) {
+                        RegistrationRole.values().forEach { role ->
+                            val isSelected = selectedRole == role
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(40.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) PrimaryTeal else Color.Transparent,
+                                onClick = {
+                                    if (selectedRole != role && !isLoading && !isVerifying) {
+                                        selectedRole = role
+                                        resetForm()
+                                    }
+                                }
+                            ) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (role == RegistrationRole.MURID) Icons.Default.School else Icons.Default.Badge,
+                                            contentDescription = role.title,
+                                            tint = if (isSelected) Color.White else SlateGray,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = role.title,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) Color.White else SlateGray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Error Banner
                 if (errorMessage != null) {
@@ -247,9 +341,9 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                // Step 1: Input NIS & Cek Button
+                // Step 1: Input Identifier (NIS / NIP) & Cek Button
                 Text(
-                    text = "Langkah 1: Masukkan NIS Terdaftar",
+                    text = "Langkah 1: Masukkan ${if (selectedRole == RegistrationRole.MURID) "NIS Siswa" else "NIP Guru"} Terdaftar",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkNavy,
@@ -262,24 +356,32 @@ fun RegisterScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
-                        value = nis,
+                        value = identifier,
                         onValueChange = {
-                            nis = it
+                            identifier = it
                             errorMessage = null
                             successMessage = null
                         },
-                        label = { Text("Nomor Induk Siswa (NIS)") },
-                        placeholder = { Text("Contoh: 202610001") },
+                        label = {
+                            Text(if (selectedRole == RegistrationRole.MURID) "Nomor Induk Siswa (NIS)" else "Nomor Induk Pegawai (NIP)")
+                        },
+                        placeholder = {
+                            Text(if (selectedRole == RegistrationRole.MURID) "Contoh: 202610001" else "Contoh: 19850101-201001-1-001")
+                        },
                         leadingIcon = {
-                            Icon(Icons.Default.Person, contentDescription = "NIS", tint = SlateGray)
+                            Icon(
+                                imageVector = if (selectedRole == RegistrationRole.MURID) Icons.Default.Person else Icons.Default.Badge,
+                                contentDescription = "ID",
+                                tint = SlateGray
+                            )
                         },
                         enabled = verifiedPerson == null && !isVerifying,
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
+                            keyboardType = if (selectedRole == RegistrationRole.MURID) KeyboardType.Number else KeyboardType.Text,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(onDone = { handleVerifyNis() }),
+                        keyboardActions = KeyboardActions(onDone = { handleVerify() }),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
                     )
@@ -287,8 +389,8 @@ fun RegisterScreen(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     Button(
-                        onClick = { handleVerifyNis() },
-                        enabled = verifiedPerson == null && !isVerifying && nis.isNotBlank(),
+                        onClick = { handleVerify() },
+                        enabled = verifiedPerson == null && !isVerifying && identifier.isNotBlank(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
                         modifier = Modifier.height(56.dp)
@@ -309,7 +411,7 @@ fun RegisterScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Verified Student Badge Card
+                // Verified Badge Card
                 if (verifiedPerson != null) {
                     val person = verifiedPerson!!
                     Card(
@@ -344,20 +446,20 @@ fun RegisterScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "DATA TERVERIFIKASI",
+                                        text = "DATA ${if (selectedRole == RegistrationRole.MURID) "SISWA" else "GURU"} TERVERIFIKASI",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF15803D)
                                     )
                                 }
                                 Text(
-                                    text = person.name ?: "Siswa Terdaftar",
+                                    text = person.name ?: "${selectedRole.title} Terdaftar",
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkNavy
                                 )
                                 Text(
-                                    text = "NIS: ${person.identifier} • ${person.detail ?: "Kelas Aktif"}",
+                                    text = "${if (selectedRole == RegistrationRole.MURID) "NIS" else "NIP"}: ${person.identifier} • ${person.detail ?: (if (selectedRole == RegistrationRole.MURID) "Kelas Aktif" else "Dewan Guru")}",
                                     fontSize = 12.sp,
                                     color = SlateGray
                                 )
@@ -365,11 +467,7 @@ fun RegisterScreen(
 
                             TextButton(
                                 onClick = {
-                                    verifiedPerson = null
-                                    successMessage = null
-                                    errorMessage = null
-                                    password = ""
-                                    confirmPassword = ""
+                                    resetForm(keepIdentifier = true)
                                 }
                             ) {
                                 Text("Ganti", color = Color(0xFFDC2626), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -392,8 +490,10 @@ fun RegisterScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it; errorMessage = null },
-                        label = { Text("Email Siswa") },
-                        placeholder = { Text("Contoh: ${person.name?.split(" ")?.firstOrNull()?.lowercase() ?: "siswa"}@sekolah.com") },
+                        label = { Text("Email ${selectedRole.title}") },
+                        placeholder = {
+                            Text("Contoh: ${person.name?.split(" ")?.firstOrNull()?.lowercase() ?: (if (selectedRole == RegistrationRole.MURID) "siswa" else "guru")}@sekolah.com")
+                        },
                         leadingIcon = {
                             Icon(Icons.Default.Email, contentDescription = "Email", tint = SlateGray)
                         },
@@ -513,7 +613,7 @@ fun RegisterScreen(
                             Text("Mengaktifkan Akun...", color = Color.White, fontSize = 15.sp)
                         } else {
                             Text(
-                                text = "Daftar & Aktifkan Akun Siswa",
+                                text = "Daftar & Aktifkan Akun ${selectedRole.title}",
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp,
                                 color = Color.White
@@ -531,7 +631,7 @@ fun RegisterScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Sudah memiliki akun siswa?",
+                        text = "Sudah memiliki akun ${selectedRole.title.lowercase()}?",
                         fontSize = 13.sp,
                         color = SlateGray
                     )

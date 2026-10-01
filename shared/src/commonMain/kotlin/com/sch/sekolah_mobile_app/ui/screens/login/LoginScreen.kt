@@ -111,7 +111,7 @@ fun LoginScreen(
                 )
 
                 Text(
-                    text = "Portal Murid & Siswa (Compose Multiplatform)",
+                    text = "Portal Siswa & Guru (Compose Multiplatform)",
                     fontSize = 13.sp,
                     color = SlateGray,
                     textAlign = TextAlign.Center
@@ -140,7 +140,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it; errorMessage = null },
-                    label = { Text("Email Siswa") },
+                    label = { Text("Email Siswa / Guru") },
                     leadingIcon = {
                         Icon(Icons.Default.Email, contentDescription = "Email", tint = SlateGray)
                     },
@@ -219,13 +219,13 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Belum memiliki akun siswa?",
+                        text = "Belum memiliki akun?",
                         fontSize = 13.sp,
                         color = SlateGray
                     )
                     TextButton(onClick = onNavigateToRegister) {
                         Text(
-                            text = "Daftar di sini",
+                            text = "Daftar / Aktivasi di sini",
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = PrimaryTeal
