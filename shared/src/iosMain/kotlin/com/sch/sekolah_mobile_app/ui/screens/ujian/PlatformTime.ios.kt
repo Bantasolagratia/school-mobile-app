@@ -73,3 +73,30 @@ actual fun formatScheduleTime(timeStr: String?): String {
         clean.take(5)
     }
 }
+
+actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
+    if (dateTimeStr.isNullOrBlank()) return null
+    val clean = dateTimeStr.trim()
+    return try {
+        if (clean.contains("T")) {
+            val isoFormatter = NSISO8601DateFormatter()
+            val date = isoFormatter.dateFromString(clean) ?: return null
+            (date.timeIntervalSince1970 * 1000.0).toLong()
+        } else {
+            val formatter = NSDateFormatter()
+            formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+            if (clean.length >= 16 && clean.contains(" ")) {
+                formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+                formatter.dateFormat = "yyyy-MM-dd"
+            } else {
+                return null
+            }
+            val date = formatter.dateFromString(clean) ?: return null
+            (date.timeIntervalSince1970 * 1000.0).toLong()
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+

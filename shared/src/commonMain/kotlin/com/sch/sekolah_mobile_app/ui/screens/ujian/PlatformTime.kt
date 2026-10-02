@@ -23,6 +23,11 @@ expect fun extractScheduleDate(dateTimeStr: String?): String?
 expect fun formatScheduleTime(timeStr: String?): String
 
 /**
+ * Parses an ISO 8601 string or date/time string to epoch millis.
+ */
+expect fun parseScheduleToEpochMillis(dateTimeStr: String?): Long?
+
+/**
  * Checks whether the schedule has already ended.
  */
 fun isSchedulePast(waktuSelesai: String?, waktuMulai: String? = null, waktu: String? = null): Boolean {
@@ -69,3 +74,39 @@ fun isScheduleOnDate(targetDate: String, waktuMulai: String?, waktuSelesai: Stri
 fun isScheduleOnDate(targetDate: String, jadwal: Jadwal): Boolean {
     return isScheduleOnDate(targetDate, jadwal.waktuMulai, jadwal.waktuSelesai, jadwal.waktu)
 }
+
+/**
+ * Calculates proximity distance of a schedule to current time in milliseconds.
+ * Returns:
+ * - 0L for currently active / ongoing sessions (within [start, end] and not ended)
+ * - Positive difference (start - now) for upcoming sessions (the sooner, the smaller)
+ * - 1_000_000_000L + elapsed (now - end) for past / ended sessions (most recently ended first, but behind upcoming)
+ */
+fun getScheduleProximity(jadwal: Jadwal, nowMillis: Long = getCurrentEpochMillis()): Long {
+    val startMillis = parseScheduleToEpochMillis(jadwal.waktuMulai ?: jadwal.waktu)
+    val endMillis = parseScheduleToEpochMillis(jadwal.waktuSelesai)
+        ?: startMillis?.plus(90 * 60 * 1000L) // Default 90 menit jika waktuSelesai kosong
+
+    if (startMillis == null && endMillis == null) return Long.MAX_VALUE
+    val s = startMillis ?: endMillis!!
+    val e = endMillis ?: (s + 90 * 60 * 1000L)
+
+    val isEnded = isSchedulePast(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu) ||
+            "SELESAI".equals(jadwal.status, ignoreCase = true)
+
+    return when {
+        // Sedang berlangsung saat ini: prioritas utama (paling atas)
+        !isEnded && nowMillis in s..e -> 0L
+
+        // Akan datang: diurutkan dari yang paling dekat waktu mulainya
+        !isEnded && nowMillis < s -> s - nowMillis
+
+        // Sudah selesai / lampau: diurutkan dari yang paling baru saja selesai,
+        // diberi offset 1_000_000_000L agar sesi aktif & mendatang hari ini/besok tetap di atas
+        else -> {
+            val elapsed = if (nowMillis > e) nowMillis - e else 0L
+            1_000_000_000L + elapsed
+        }
+    }
+}
+
