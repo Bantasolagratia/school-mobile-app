@@ -37,7 +37,7 @@ fun ProfileScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
 
     val displayName = profile?.displayName ?: "Siswa"
-    val email = profile?.email ?: "wrenley@murid.sekolah.com"
+    val username = profile?.effectiveUsername?.takeIf { it.isNotEmpty() } ?: "wrenley"
     val nis = profile?.nis ?: "202610012"
     val displayDetail = profile?.displayDetail ?: "Kelas 10-C"
 
@@ -131,7 +131,7 @@ fun ProfileScreen(
                     }
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Email, label = "Email Akun", value = email)
+                ProfileInfoRow(icon = Icons.Default.Person, label = "Username", value = username)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
                 ProfileInfoRow(icon = Icons.Default.Class, label = "Kelas / Rombel", value = displayDetail)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)

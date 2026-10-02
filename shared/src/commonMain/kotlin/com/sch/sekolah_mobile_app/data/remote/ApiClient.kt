@@ -79,16 +79,27 @@ class ApiClient(
         }
     }
 
-    suspend fun login(email: String, password: String): SessionResponse {
+    private fun normalizeUsername(input: String): String {
+        val trimmed = input.trim()
+        if (trimmed.isEmpty()) return ""
+        return if (trimmed.contains("@")) {
+            trimmed
+        } else {
+            "$trimmed@sekolah.id"
+        }
+    }
+
+    suspend fun login(usernameOrEmail: String, password: String): SessionResponse {
         val url = ApiConfig.getTokenUrl()
+        val effectiveEmail = normalizeUsername(usernameOrEmail)
         val response = authHttpClient.post(url) {
             contentType(ContentType.Application.Json)
-            setBody(LoginRequest(email = email.trim(), password = password))
+            setBody(LoginRequest(email = effectiveEmail, password = password))
         }
 
         if (!response.status.isSuccess()) {
             val responseText = response.bodyAsText()
-            var message = "Email atau password tidak valid."
+            var message = "Username atau password tidak valid."
             try {
                 val jsonTree = json.parseToJsonElement(responseText).jsonObject
                 message = jsonTree["error_description"]?.jsonPrimitive?.content

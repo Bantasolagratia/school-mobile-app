@@ -9,7 +9,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
@@ -39,22 +39,22 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("wrenley@murid.sekolah.com") }
+    var username by remember { mutableStateOf("wrenley") }
     var password by remember { mutableStateOf("Password123!") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun performLogin() {
-        if (email.isBlank() || password.isBlank()) {
-            errorMessage = "Email dan password wajib diisi."
+        if (username.isBlank() || password.isBlank()) {
+            errorMessage = "Username dan password wajib diisi."
             return
         }
         isLoading = true
         errorMessage = null
         coroutineScope.launch {
             try {
-                authRepository.login(email, password)
+                authRepository.login(username, password)
                 isLoading = false
                 onLoginSuccess()
             } catch (e: Exception) {
@@ -136,17 +136,18 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Email Input
+                // Username Input
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it; errorMessage = null },
-                    label = { Text("Email Siswa / Guru") },
+                    value = username,
+                    onValueChange = { username = it; errorMessage = null },
+                    label = { Text("Username") },
+                    placeholder = { Text("Masukkan username Anda") },
                     leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = "Email", tint = SlateGray)
+                        Icon(Icons.Default.Person, contentDescription = "Username", tint = SlateGray)
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
+                        keyboardType = KeyboardType.Text,
                         imeAction = ImeAction.Next
                     ),
                     shape = RoundedCornerShape(12.dp),
