@@ -79,3 +79,31 @@ actual fun formatScheduleTime(timeStr: String?): String {
         clean.take(5)
     }
 }
+
+actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
+    if (dateTimeStr.isNullOrBlank()) return null
+    val clean = dateTimeStr.trim()
+    return try {
+        if (clean.contains("T")) {
+            val instant = Instant.parse(clean)
+            instant.toEpochMilli()
+        } else {
+            if (clean.length >= 16 && clean.contains(" ")) {
+                val parts = clean.split(" ")
+                val datePart = parts[0]
+                val timePart = parts[1]
+                val ldt = LocalDateTime.parse("${datePart}T${timePart}")
+                ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
+            } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+                val datePart = clean.take(10)
+                val ldt = LocalDateTime.parse("${datePart}T00:00:00")
+                ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
+            } else {
+                null
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+

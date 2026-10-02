@@ -27,7 +27,9 @@ import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentEpochMillis
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
+import com.sch.sekolah_mobile_app.ui.screens.ujian.getScheduleProximity
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isScheduleOnDate
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.theme.*
@@ -63,7 +65,11 @@ fun TeacherJadwalScreen(
             errorMessage = null
             try {
                 val list = jadwalRepository.getSchedules()
-                schedules = list
+                val now = getCurrentEpochMillis()
+                schedules = list.sortedWith(
+                    compareBy<Jadwal> { getScheduleProximity(it, now) }
+                        .thenBy { it.waktuMulai ?: it.waktu ?: "" }
+                )
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Gagal memuat jadwal guru."
             } finally {
@@ -98,8 +104,9 @@ fun TeacherJadwalScreen(
     val pengajarCount = schedules.count { !isPengawasSchedule(it) }
     val pengawasCount = schedules.count { isPengawasSchedule(it) }
 
-    // Filtered items
+    // Filtered & Proximity-Sorted items (selalu yang paling dekat dengan current time di paling atas)
     val filteredSchedules = remember(schedules, selectedTab, searchQuery) {
+        val now = getCurrentEpochMillis()
         schedules.filter { j ->
             val matchTab = when (selectedTab) {
                 JadwalFilterTab.ALL -> true
@@ -118,7 +125,10 @@ fun TeacherJadwalScreen(
             }
 
             matchTab && matchQuery
-        }
+        }.sortedWith(
+            compareBy<Jadwal> { getScheduleProximity(it, now) }
+                .thenBy { it.waktuMulai ?: it.waktu ?: "" }
+        )
     }
 
     Scaffold(
