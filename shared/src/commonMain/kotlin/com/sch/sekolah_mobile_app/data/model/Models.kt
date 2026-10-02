@@ -80,6 +80,7 @@ data class UserIdentity(
 data class UserProfileResponse(
     val idUser: String? = null,
     val email: String? = null,
+    val username: String? = null,
     val isAdmin: Boolean = false,
     val isTeacher: Boolean = false,
     val isStudent: Boolean = false,
@@ -87,6 +88,11 @@ data class UserProfileResponse(
     val roles: List<String> = emptyList(),
     val identities: List<UserIdentity> = emptyList()
 ) {
+    val effectiveUsername: String
+        get() = username?.takeIf { it.isNotBlank() }
+            ?: email?.substringBefore('@')?.takeIf { it.isNotBlank() }
+            ?: ""
+
     val isRoleMurid: Boolean
         get() = isStudent || roles.contains("MURID")
 
@@ -101,7 +107,7 @@ data class UserProfileResponse(
 
     val displayName: String
         get() = (if (isRoleGuru) teacherIdentity?.name else studentIdentity?.name)?.trim()?.takeIf { it.isNotEmpty() }
-            ?: email?.substringBefore('@')?.takeIf { it.isNotEmpty() }
+            ?: effectiveUsername.takeIf { it.isNotEmpty() }
             ?: if (isRoleGuru) "Guru" else "Siswa"
 
     val displayDetail: String
@@ -546,7 +552,8 @@ data class IdentityResponse(
 data class RegistrationRequest(
     val role: String,
     val identifier: String,
-    val email: String,
+    val username: String? = null,
+    val email: String? = null,
     val password: String,
     val telp: String? = null,
     val wa: String? = null

@@ -74,8 +74,8 @@ class AuthRepository(
 
     fun getRefreshToken(): String? = cachedRefreshToken
 
-    suspend fun login(email: String, pass: String): UserProfileResponse {
-        val session = apiClient.login(email.trim(), pass)
+    suspend fun login(usernameOrEmail: String, pass: String): UserProfileResponse {
+        val session = apiClient.login(usernameOrEmail.trim(), pass)
         val token = session.accessToken
         cachedToken = token
         cachedRefreshToken = session.refreshToken
@@ -126,33 +126,36 @@ class AuthRepository(
 
     suspend fun registerStudent(
         nis: String,
-        email: String,
+        username: String,
         password: String,
         telp: String,
         wa: String
     ): UserProfileResponse {
-        return registerUser("MURID", nis, email, password, telp, wa)
+        return registerUser("MURID", nis, username, password, telp, wa)
     }
 
     suspend fun registerUser(
         role: String,
         identifier: String,
-        email: String,
+        username: String,
         password: String,
         telp: String,
         wa: String
     ): UserProfileResponse {
+        val cleanUsername = username.trim()
+        val effectiveEmail = if (cleanUsername.contains("@")) cleanUsername else "$cleanUsername@sekolah.id"
         apiClient.register(
             RegistrationRequest(
                 role = role.trim().uppercase(),
                 identifier = identifier.trim(),
-                email = email.trim(),
+                username = cleanUsername,
+                email = effectiveEmail,
                 password = password,
                 telp = telp.trim().ifEmpty { null },
                 wa = wa.trim().ifEmpty { null }
             )
         )
-        return login(email.trim(), password)
+        return login(cleanUsername, password)
     }
 
     suspend fun performSilentRefresh(): Boolean {

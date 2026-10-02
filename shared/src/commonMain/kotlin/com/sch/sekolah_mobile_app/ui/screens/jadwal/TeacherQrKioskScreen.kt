@@ -49,7 +49,7 @@ fun TeacherQrKioskScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scheduleId = jadwal.effectiveId
-    val teacherNip = profile?.nip?.takeIf { it != "-" } ?: profile?.email?.substringBefore('@') ?: ""
+    val teacherNip = profile?.nip?.takeIf { it != "-" } ?: profile?.effectiveUsername ?: ""
 
     // QR State
     var qrPayload by remember { mutableStateOf<QrPayloadMobile?>(null) }

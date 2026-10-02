@@ -59,7 +59,7 @@ fun RegisterScreen(
     var verifiedPerson by remember { mutableStateOf<IdentityResponse?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
 
-    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var telp by remember { mutableStateOf("") }
     var wa by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -76,7 +76,7 @@ fun RegisterScreen(
             identifier = ""
         }
         verifiedPerson = null
-        email = ""
+        username = ""
         telp = ""
         wa = ""
         password = ""
@@ -141,13 +141,14 @@ fun RegisterScreen(
             return
         }
 
-        val cleanEmail = email.trim()
-        if (cleanEmail.isBlank()) {
-            errorMessage = "Email wajib diisi."
+        val cleanUsername = username.trim().lowercase()
+        if (cleanUsername.isBlank()) {
+            errorMessage = "Username wajib diisi."
             return
         }
-        if (!cleanEmail.contains("@") || !cleanEmail.contains(".")) {
-            errorMessage = "Format email tidak valid."
+        val usernamePattern = Regex("^[a-z0-9._-]{3,50}$")
+        if (!usernamePattern.matches(cleanUsername)) {
+            errorMessage = "Format username tidak valid (3-50 karakter, huruf kecil, angka, titik, minus, atau garis bawah)."
             return
         }
 
@@ -167,7 +168,7 @@ fun RegisterScreen(
                 authRepository.registerUser(
                     role = selectedRole.code,
                     identifier = currentVerified.identifier ?: identifier.trim(),
-                    email = cleanEmail,
+                    username = cleanUsername,
                     password = password,
                     telp = telp.trim(),
                     wa = wa.trim()
@@ -483,19 +484,19 @@ fun RegisterScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Email Field
+                    // Username Field
                     OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it; errorMessage = null },
-                        label = { Text("Email ${selectedRole.title}") },
+                        value = username,
+                        onValueChange = { username = it; errorMessage = null },
+                        label = { Text("Username Akun") },
                         placeholder = {
-                            Text("Contoh: ${person.name?.split(" ")?.firstOrNull()?.lowercase() ?: (if (selectedRole == RegistrationRole.MURID) "siswa" else "guru")}@sekolah.com")
+                            Text("Buat username (contoh: ${person.name?.split(" ")?.firstOrNull()?.lowercase() ?: (if (selectedRole == RegistrationRole.MURID) "siswa" else "guru")})")
                         },
                         leadingIcon = {
-                            Icon(Icons.Default.Email, contentDescription = "Email", tint = SlateGray)
+                            Icon(Icons.Default.Person, contentDescription = "Username", tint = SlateGray)
                         },
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
