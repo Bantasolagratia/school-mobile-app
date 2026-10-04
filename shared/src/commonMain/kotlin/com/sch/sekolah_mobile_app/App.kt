@@ -18,6 +18,8 @@ import com.sch.sekolah_mobile_app.data.model.MateriItem
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.SuratIzinItemMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.model.VersionCheckResult
+import com.sch.sekolah_mobile_app.data.repository.AppVersionGuardManager
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.repository.GuruRepository
 import com.sch.sekolah_mobile_app.data.repository.IzinRepository
@@ -28,6 +30,7 @@ import com.sch.sekolah_mobile_app.data.repository.RaportRepository
 import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.ui.screens.calendar.CalendarScreen
+import com.sch.sekolah_mobile_app.ui.screens.version.ForceUpdateScreen
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.CreateIzinScreen
@@ -96,6 +99,12 @@ fun App() {
     val izinRepository = remember { IzinRepository(authRepository = authRepository) }
 
     val isRaportModuleEnabled by RemoteConfigManager.instance.isRaportModuleEnabled.collectAsState()
+    val versionCheckResult by AppVersionGuardManager.instance.versionCheckResult.collectAsState()
+
+    // Verifikasi versi aplikasi & anti-tampering saat aplikasi dibuka
+    LaunchedEffect(Unit) {
+        AppVersionGuardManager.instance.checkAppVersion()
+    }
 
     var screenState by remember {
         mutableStateOf(if (authRepository.hasActiveSession()) ScreenState.MAIN else ScreenState.LOGIN)
@@ -154,10 +163,26 @@ fun App() {
     }
 
     SekolahMobileTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = LightBackground
-        ) {
+        when (val vResult = versionCheckResult) {
+            is VersionCheckResult.ForceUpdateRequired -> {
+                ForceUpdateScreen(
+                    payload = vResult.payload,
+                    tamperReason = null,
+                    onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
+                )
+            }
+            is VersionCheckResult.TamperingDetected -> {
+                ForceUpdateScreen(
+                    payload = null,
+                    tamperReason = vResult.reason,
+                    onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
+                )
+            }
+            else -> {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = LightBackground
+                ) {
             when (screenState) {
                 ScreenState.LOGIN -> {
                     LoginScreen(
@@ -548,6 +573,8 @@ fun App() {
             }
         }
     }
+}
+}
 }
 
 @Composable
