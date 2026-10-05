@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
+import com.sch.sekolah_mobile_app.data.remote.ApiConfig
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
@@ -35,6 +36,9 @@ fun ProfileScreen(
         mutableStateOf(platformStorage.getString("pref_mask_sensitive_info", "false") == "true")
     }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var currentHost by remember { mutableStateOf(ApiConfig.getHost()) }
+    var showHostDialog by remember { mutableStateOf(false) }
+    var hostInputText by remember { mutableStateOf(currentHost) }
 
     val displayName = profile?.displayName ?: "Siswa"
     val username = profile?.effectiveUsername?.takeIf { it.isNotEmpty() } ?: "wrenley"
@@ -82,8 +86,13 @@ fun ProfileScreen(
             color = AccentAmberContainer,
             shape = RoundedCornerShape(8.dp)
         ) {
+            val roleText = when {
+                profile?.isAdmin == true -> "ROLE: ADMINISTRATOR"
+                profile?.isRoleGuru == true -> "ROLE: GURU / TENAGA PENDIDIK"
+                else -> "ROLE: SISWA / MURID"
+            }
             Text(
-                text = "ROLE: SISWA / MURID",
+                text = roleText,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = DarkNavy,
@@ -102,7 +111,7 @@ fun ProfileScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Data Akademik Siswa",
+                    text = "Data Akun Pengguna",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     color = DarkNavy
@@ -111,7 +120,7 @@ fun ProfileScreen(
 
                 ProfileInfoRow(
                     icon = Icons.Default.Badge,
-                    label = "Nomor Induk Siswa (NIS)",
+                    label = if (profile?.isRoleGuru == true) "Nomor Induk Pegawai (NIP)" else "Nomor Induk Siswa (NIS)",
                     value = if (isSensitiveInfoMasked) "****" else nis,
                     trailingAction = {
                         IconButton(
@@ -123,7 +132,7 @@ fun ProfileScreen(
                         ) {
                             Icon(
                                 imageVector = if (isSensitiveInfoMasked) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (isSensitiveInfoMasked) "Tampilkan NIS" else "Sembunyikan NIS",
+                                contentDescription = if (isSensitiveInfoMasked) "Tampilkan" else "Sembunyikan",
                                 tint = SlateGray,
                                 modifier = Modifier.size(18.dp)
                             )
@@ -133,9 +142,48 @@ fun ProfileScreen(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
                 ProfileInfoRow(icon = Icons.Default.Person, label = "Username", value = username)
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
-                ProfileInfoRow(icon = Icons.Default.Class, label = "Kelas / Rombel", value = displayDetail)
+                ProfileInfoRow(
+                    icon = Icons.Default.Class,
+                    label = if (profile?.isRoleGuru == true) "Jabatan / Keterangan" else "Kelas / Rombel",
+                    value = displayDetail
+                )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp), color = BorderStrokeColor)
                 ProfileInfoRow(icon = Icons.Default.CheckCircle, label = "Status", value = "Aktif Terdaftar")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Server Network Configuration Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Konfigurasi Jaringan Server",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkNavy
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                ProfileInfoRow(
+                    icon = Icons.Default.Settings,
+                    label = "Server Host / Gateway IP",
+                    value = currentHost,
+                    trailingAction = {
+                        TextButton(
+                            onClick = {
+                                hostInputText = currentHost
+                                showHostDialog = true
+                            }
+                        ) {
+                            Text("Ubah", fontSize = 12.sp, color = PrimaryTeal, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
             }
         }
 
@@ -168,11 +216,67 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(32.dp))
     }
 
+    if (showHostDialog) {
+        AlertDialog(
+            onDismissRequest = { showHostDialog = false },
+            title = { Text("Pengaturan Host Server") },
+            text = {
+                Column {
+                    Text(
+                        text = "Sesuaikan alamat IP backend jika mengakses via VPN (Tailscale) atau jaringan lokal.",
+                        fontSize = 13.sp,
+                        color = SlateGray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = hostInputText,
+                        onValueChange = { hostInputText = it },
+                        label = { Text("Server Host / IP") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Default Tailscale: 100.69.213.116",
+                        fontSize = 11.sp,
+                        color = SlateLight
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        ApiConfig.setHost(hostInputText)
+                        currentHost = ApiConfig.getHost()
+                        showHostDialog = false
+                    }
+                ) {
+                    Text("Simpan")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = {
+                        ApiConfig.resetHost()
+                        currentHost = ApiConfig.getHost()
+                        hostInputText = currentHost
+                        showHostDialog = false
+                    }) {
+                        Text("Reset Default", color = ErrorRed)
+                    }
+                    TextButton(onClick = { showHostDialog = false }) {
+                        Text("Batal")
+                    }
+                }
+            }
+        )
+    }
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Konfirmasi Keluar") },
-            text = { Text("Apakah Anda yakin ingin keluar dari akun murid ini?") },
+            text = { Text("Apakah Anda yakin ingin keluar dari akun ini?") },
             confirmButton = {
                 TextButton(
                     onClick = {

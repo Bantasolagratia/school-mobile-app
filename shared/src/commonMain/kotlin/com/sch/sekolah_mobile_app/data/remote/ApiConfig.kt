@@ -13,11 +13,16 @@ object ApiConfig {
     fun getHost(): String {
         val storage = getPlatformStorage()
         val custom = storage.getString(KEY_CUSTOM_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
-        if (custom == "10.0.2.2" || custom == "localhost") {
+        if (custom == null || custom == "10.0.2.2" || custom == "localhost" || custom == "192.168.18.94") {
             storage.remove(KEY_CUSTOM_HOST)
             return getDefaultServerHost()
         }
-        return custom ?: getDefaultServerHost()
+        return custom
+    }
+
+    fun resetHost() {
+        val storage = getPlatformStorage()
+        storage.remove(KEY_CUSTOM_HOST)
     }
 
     fun setHost(newHost: String) {
