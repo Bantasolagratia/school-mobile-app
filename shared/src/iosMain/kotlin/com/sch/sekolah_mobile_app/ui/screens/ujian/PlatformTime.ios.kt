@@ -74,6 +74,18 @@ actual fun formatScheduleTime(timeStr: String?): String {
     }
 }
 
+actual fun formatEpochMillisToTime(epochMillis: Long): String {
+    return try {
+        val date = NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0)
+        val wibFormatter = NSDateFormatter()
+        wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+        wibFormatter.dateFormat = "HH:mm"
+        wibFormatter.stringFromDate(date)
+    } catch (_: Exception) {
+        "--:--"
+    }
+}
+
 actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
     if (dateTimeStr.isNullOrBlank()) return null
     val clean = dateTimeStr.trim()

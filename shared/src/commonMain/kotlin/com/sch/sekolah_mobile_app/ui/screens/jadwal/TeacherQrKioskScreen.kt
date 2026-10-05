@@ -31,6 +31,7 @@ import com.sch.sekolah_mobile_app.data.model.QrPayloadMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamKioskEffect
+import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleEndTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isSchedulePast
 import com.sch.sekolah_mobile_app.ui.screens.ujian.releaseExamKiosk
@@ -261,7 +262,7 @@ fun TeacherQrKioskScreen(
                         Icon(Icons.Default.Schedule, contentDescription = null, tint = SlateGray, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleTime(jadwal.waktuSelesai)} WIB",
+                            text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleEndTime(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu)} WIB",
                             fontSize = 13.sp,
                             color = DarkNavy
                         )

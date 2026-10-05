@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.*
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
+import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleEndTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.isScheduleOnDate
@@ -594,7 +595,7 @@ private fun ScheduleCardItem(
                 Icon(Icons.Default.AccessTime, contentDescription = null, tint = SlateGray, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleTime(jadwal.waktuSelesai)} WIB",
+                    text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleEndTime(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu)} WIB",
                     fontSize = 12.sp,
                     color = DarkNavy
                 )
