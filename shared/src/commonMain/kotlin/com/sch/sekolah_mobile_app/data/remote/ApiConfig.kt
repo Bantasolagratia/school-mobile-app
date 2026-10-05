@@ -1,5 +1,6 @@
 package com.sch.sekolah_mobile_app.data.remote
 
+import com.sch.sekolah_mobile_app.data.security.PlatformAppInfo
 import com.sch.sekolah_mobile_app.data.storage.getDefaultServerHost
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 
@@ -8,27 +9,40 @@ object ApiConfig {
     const val API_PORT = 8080
     const val GATEWAY_PORT = 5173
 
-    private const val KEY_CUSTOM_HOST = "custom_server_host"
+    private const val KEY_SERVER_HOST = "cached_server_host"
+    private const val KEY_HOST_APP_VERSION = "cached_server_host_app_version"
+    private const val LEGACY_KEY_CUSTOM_HOST = "custom_server_host"
 
     fun getHost(): String {
         val storage = getPlatformStorage()
-        val custom = storage.getString(KEY_CUSTOM_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
-        if (custom == null || custom == "10.0.2.2" || custom == "localhost" || custom == "192.168.18.94") {
-            storage.remove(KEY_CUSTOM_HOST)
-            return getDefaultServerHost()
+
+        // Bersihkan legacy key custom_server_host lama
+        storage.remove(LEGACY_KEY_CUSTOM_HOST)
+
+        val currentAppVersion = try {
+            "${PlatformAppInfo.getVersionName()}_${PlatformAppInfo.getVersionCode()}"
+        } catch (_: Exception) {
+            "1.0_1"
         }
-        return custom
-    }
 
-    fun resetHost() {
-        val storage = getPlatformStorage()
-        storage.remove(KEY_CUSTOM_HOST)
-    }
+        val cachedVersion = storage.getString(KEY_HOST_APP_VERSION, null)
+        val defaultHost = getDefaultServerHost()
 
-    fun setHost(newHost: String) {
-        val storage = getPlatformStorage()
-        val clean = newHost.trim().ifEmpty { getDefaultServerHost() }
-        storage.setString(KEY_CUSTOM_HOST, clean)
+        // Jika baru install, update versi, atau belum ada versi tersimpan:
+        // baca ulang dari file konfigurasi (getDefaultServerHost) lalu masukkan ke cache
+        if (cachedVersion != currentAppVersion) {
+            storage.setString(KEY_SERVER_HOST, defaultHost)
+            storage.setString(KEY_HOST_APP_VERSION, currentAppVersion)
+            return defaultHost
+        }
+
+        val cachedHost = storage.getString(KEY_SERVER_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
+        if (cachedHost.isNullOrEmpty()) {
+            storage.setString(KEY_SERVER_HOST, defaultHost)
+            return defaultHost
+        }
+
+        return cachedHost
     }
 
     fun getBaseUrl(): String {
