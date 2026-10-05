@@ -26,6 +26,7 @@ import com.sch.sekolah_mobile_app.data.model.Jadwal
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.JadwalRepository
 import com.sch.sekolah_mobile_app.ui.screens.ujian.extractScheduleDate
+import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleEndTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.formatScheduleTime
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentEpochMillis
 import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime
@@ -478,7 +479,7 @@ private fun TeacherJadwalCard(
                 Icon(Icons.Default.AccessTime, contentDescription = null, tint = SlateGray, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleTime(jadwal.waktuSelesai)} WIB",
+                    text = "${formatScheduleTime(jadwal.waktuMulai)} - ${formatScheduleEndTime(jadwal.waktuSelesai, jadwal.waktuMulai, jadwal.waktu)} WIB",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = DarkNavy

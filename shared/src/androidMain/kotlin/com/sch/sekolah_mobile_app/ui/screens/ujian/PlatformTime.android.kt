@@ -80,6 +80,15 @@ actual fun formatScheduleTime(timeStr: String?): String {
     }
 }
 
+actual fun formatEpochMillisToTime(epochMillis: Long): String {
+    return try {
+        val instant = Instant.ofEpochMilli(epochMillis)
+        instant.atZone(ZONE_WIB).format(TIME_FORMATTER)
+    } catch (_: Exception) {
+        "--:--"
+    }
+}
+
 actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
     if (dateTimeStr.isNullOrBlank()) return null
     val clean = dateTimeStr.trim()

@@ -23,6 +23,28 @@ expect fun extractScheduleDate(dateTimeStr: String?): String?
 expect fun formatScheduleTime(timeStr: String?): String
 
 /**
+ * Formats epoch millis as HH:mm in Western Indonesia Time (WIB / UTC+7).
+ */
+expect fun formatEpochMillisToTime(epochMillis: Long): String
+
+/**
+ * Formats schedule end time as HH:mm in Western Indonesia Time.
+ * If waktuSelesai is missing or invalid ("--:--"), falls back to parsing start time + 90 minutes.
+ */
+fun formatScheduleEndTime(waktuSelesai: String?, waktuMulai: String?, waktu: String? = null): String {
+    val formatted = formatScheduleTime(waktuSelesai)
+    if (formatted != "--:--") {
+        return formatted
+    }
+    val startMillis = parseScheduleToEpochMillis(waktuMulai ?: waktu)
+    if (startMillis != null) {
+        val endMillis = startMillis + 90 * 60 * 1000L
+        return formatEpochMillisToTime(endMillis)
+    }
+    return "--:--"
+}
+
+/**
  * Parses an ISO 8601 string or date/time string to epoch millis.
  */
 expect fun parseScheduleToEpochMillis(dateTimeStr: String?): Long?
