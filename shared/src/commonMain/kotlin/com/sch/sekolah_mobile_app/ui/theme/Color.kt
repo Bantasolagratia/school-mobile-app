@@ -19,5 +19,6 @@ val LightBackground = Color(0xFFF8FAFC)
 val CardSurface = Color(0xFFFFFFFF)
 val SurfaceVariantColor = Color(0xFFF1F5F9)
 val BorderStrokeColor = Color(0xFFE2E8F0)
+val BorderHairline = Color(0x1F0F172A)
 val ErrorRed = Color(0xFFDC2626)
 

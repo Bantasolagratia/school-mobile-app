@@ -51,6 +51,8 @@ import com.sch.sekolah_mobile_app.ui.screens.raport.RaportScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.StudentExamHistoryScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
+import androidx.compose.foundation.BorderStroke
+import com.sch.sekolah_mobile_app.ui.theme.BorderStrokeColor
 import com.sch.sekolah_mobile_app.ui.theme.LightBackground
 import com.sch.sekolah_mobile_app.ui.theme.PrimaryTeal
 import com.sch.sekolah_mobile_app.ui.theme.SekolahMobileTheme
@@ -542,21 +544,26 @@ fun App() {
                                     // Phone Layout: Bottom Navigation Bar
                                     Scaffold(
                                         bottomBar = {
-                                            NavigationBar(
-                                                containerColor = MaterialTheme.colorScheme.surface,
-                                                tonalElevation = 4.dp
+                                            Surface(
+                                                border = BorderStroke(0.5.dp, BorderStrokeColor),
+                                                tonalElevation = 0.dp
                                             ) {
-                                                visibleTabs.forEach { tab ->
-                                                    NavigationBarItem(
-                                                        selected = currentTab == tab,
-                                                        onClick = { currentTab = tab },
-                                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                                        label = { Text(tab.label) },
-                                                        colors = NavigationBarItemDefaults.colors(
-                                                            selectedIconColor = PrimaryTeal,
-                                                            indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                                NavigationBar(
+                                                    containerColor = MaterialTheme.colorScheme.surface,
+                                                    tonalElevation = 0.dp
+                                                ) {
+                                                    visibleTabs.forEach { tab ->
+                                                        NavigationBarItem(
+                                                            selected = currentTab == tab,
+                                                            onClick = { currentTab = tab },
+                                                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                                            label = { Text(tab.label) },
+                                                            colors = NavigationBarItemDefaults.colors(
+                                                                selectedIconColor = PrimaryTeal,
+                                                                indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                                            )
                                                         )
-                                                    )
+                                                    }
                                                 }
                                             }
                                         }
