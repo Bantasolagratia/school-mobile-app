@@ -6,20 +6,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 object AndroidPlatformContext {
-    private const val SIT_HOST = "https://development.taile61966.ts.net"
-
     private var appContext: Context? = null
     private var currentActivity: java.lang.ref.WeakReference<android.app.Activity>? = null
 
-    // Host server ditentukan oleh build flavor (sit/dev) di modul app, bukan input user.
-    var serverHost: String = SIT_HOST
-        private set
-
-    fun init(context: Context, serverHost: String? = null) {
+    fun init(context: Context) {
         appContext = context.applicationContext
-        if (!serverHost.isNullOrBlank()) {
-            this.serverHost = serverHost.trim()
-        }
         if (context is android.app.Activity) {
             currentActivity = java.lang.ref.WeakReference(context)
         }
@@ -57,7 +48,7 @@ actual fun getPlatformStorage(): PlatformStorage {
     return PlatformStorage(prefs)
 }
 
-actual fun getDefaultServerHost(): String = AndroidPlatformContext.serverHost
+actual fun getDefaultServerHost(): String = "http://100.69.213.116:5174"
 
 actual fun copyToClipboard(label: String, text: String) {
     val context = AndroidPlatformContext.get()

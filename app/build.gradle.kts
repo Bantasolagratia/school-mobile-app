@@ -11,11 +11,11 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.sch.sekolah_mobile_app"
+        applicationId = "com.sch.sekolah_mobile_app.dev"
         minSdk = 26
         targetSdk = 35
         versionCode = 3
-        versionName = "1.0.2"
+        versionName = "1.0.2-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,31 +26,12 @@ android {
         }
     }
 
-    // Environment flavor: host server ditanam saat build, BUKAN diinput user.
-    // - sit : publik via Tailscale Funnel
-    // - dev : privat, hanya bisa diakses dari perangkat yang terhubung Tailscale
-    flavorDimensions += "env"
-    productFlavors {
-        create("sit") {
-            dimension = "env"
-            buildConfigField("String", "SERVER_HOST", "\"https://development.taile61966.ts.net\"")
-            buildConfigField("String", "ENV_NAME", "\"SIT\"")
-        }
-        create("dev") {
-            dimension = "env"
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-            buildConfigField("String", "SERVER_HOST", "\"http://100.69.213.116:5174\"")
-            buildConfigField("String", "ENV_NAME", "\"DEV\"")
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
-        buildConfig = true
     }
     packaging {
         resources {
