@@ -39,8 +39,8 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit = {}
 ) {
     val coroutineScope = rememberCoroutineScope()
-    var username by remember { mutableStateOf("wrenley") }
-    var password by remember { mutableStateOf("Password123!") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
