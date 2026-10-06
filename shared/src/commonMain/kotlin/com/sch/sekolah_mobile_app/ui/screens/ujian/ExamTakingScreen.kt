@@ -74,6 +74,7 @@ fun ExamTakingScreen(
     var questions by remember { mutableStateOf<List<UjianQuestionMobile>>(emptyList()) }
     var currentIndex by remember { mutableStateOf(0) }
     var studentAnswers by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    var flaggedQuestions by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var isLoadingQuestions by remember { mutableStateOf(true) }
 
     // Heartbeat & Security Lock State
@@ -237,10 +238,19 @@ fun ExamTakingScreen(
                             )
                         }
 
-                        // Timer Badge
+                        // Timer Badge with Multi-Tier Warning Colors
+                        val timerBgColor = when {
+                            remainingSeconds < 300 -> Color(0xFFEF4444) // Red Critical (< 5m)
+                            remainingSeconds < 600 -> Color(0xFFD97706) // Amber Warning (< 10m)
+                            else -> Color.White.copy(alpha = 0.15f)
+                        }
                         Surface(
-                            color = if (remainingSeconds < 300) Color(0xFFEF4444) else Color.White.copy(alpha = 0.15f),
-                            shape = RoundedCornerShape(8.dp)
+                            color = timerBgColor,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (remainingSeconds < 600) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.15f)
+                            )
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -344,6 +354,24 @@ fun ExamTakingScreen(
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Progress Bar Sisa Waktu Ujian
+                    val timeProgress = (remainingSeconds.toFloat() / (90 * 60)).coerceIn(0f, 1f)
+                    LinearProgressIndicator(
+                        progress = { timeProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = when {
+                            remainingSeconds < 300 -> Color(0xFFEF4444)
+                            remainingSeconds < 600 -> Color(0xFFF59E0B)
+                            else -> PrimaryTeal
+                        },
+                        trackColor = Color.White.copy(alpha = 0.12f)
+                    )
                 }
             }
 
@@ -362,22 +390,29 @@ fun ExamTakingScreen(
                     ) {
                         itemsIndexed(questions) { index, _ ->
                             val isAnswered = studentAnswers.containsKey(index)
+                            val isFlagged = flaggedQuestions.contains(index)
                             val isCurrent = index == currentIndex
 
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(
                                         when {
                                             isCurrent -> PrimaryTeal
+                                            isFlagged -> Color(0xFFFEF3C7)
                                             isAnswered -> PrimaryTealContainer
                                             else -> SurfaceVariantColor
                                         }
                                     )
                                     .border(
-                                        width = if (isCurrent) 2.dp else 1.dp,
-                                        color = if (isCurrent) DarkNavy else Color.Transparent,
+                                        width = if (isCurrent) 2.dp else if (isFlagged) 1.5.dp else 1.dp,
+                                        color = when {
+                                            isCurrent -> DarkNavy
+                                            isFlagged -> Color(0xFFF59E0B)
+                                            isAnswered -> PrimaryTeal.copy(alpha = 0.35f)
+                                            else -> BorderStrokeColor
+                                        },
                                         shape = RoundedCornerShape(8.dp)
                                     )
                                     .clickable { currentIndex = index },
@@ -386,13 +421,24 @@ fun ExamTakingScreen(
                                 Text(
                                     text = "${index + 1}",
                                     fontSize = 13.sp,
-                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                    fontWeight = if (isCurrent || isFlagged) FontWeight.Bold else FontWeight.Medium,
                                     color = when {
                                         isCurrent -> Color.White
+                                        isFlagged -> Color(0xFFB45309)
                                         isAnswered -> OnPrimaryTealContainer
                                         else -> SlateGray
                                     }
                                 )
+                                if (isFlagged && !isCurrent) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(3.dp)
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFF59E0B))
+                                    )
+                                }
                             }
                         }
                     }
@@ -440,22 +486,66 @@ fun ExamTakingScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = DarkNavy
                                 )
-                                Surface(
-                                    color = SurfaceVariantColor,
-                                    shape = RoundedCornerShape(6.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    val typeLabel = when {
-                                        "ESSAI".equals(q.type, ignoreCase = true) -> "SOAL ISIAN"
-                                        "URAIAN".equals(q.type, ignoreCase = true) -> "SOAL URAIAN"
-                                        else -> (q.type ?: "PILIHAN GANDA").replace("_", " ")
+                                    // Tombol Ragu-ragu (Flagged)
+                                    val isCurrentFlagged = flaggedQuestions.contains(currentIndex)
+                                    Surface(
+                                        color = if (isCurrentFlagged) Color(0xFFFEF3C7) else SurfaceVariantColor,
+                                        shape = RoundedCornerShape(6.dp),
+                                        border = BorderStroke(
+                                            1.dp,
+                                            if (isCurrentFlagged) Color(0xFFF59E0B) else BorderStrokeColor
+                                        ),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .clickable {
+                                                flaggedQuestions = if (isCurrentFlagged) {
+                                                    flaggedQuestions - currentIndex
+                                                } else {
+                                                    flaggedQuestions + currentIndex
+                                                }
+                                            }
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Flag,
+                                                contentDescription = null,
+                                                tint = if (isCurrentFlagged) Color(0xFFB45309) else SlateGray,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                            Text(
+                                                text = if (isCurrentFlagged) "Ragu-ragu" else "Ragu?",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = if (isCurrentFlagged) Color(0xFFB45309) else SlateGray
+                                            )
+                                        }
                                     }
-                                    Text(
-                                        text = typeLabel,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = SlateGray,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                    )
+
+                                    Surface(
+                                        color = SurfaceVariantColor,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        val typeLabel = when {
+                                            "ESSAI".equals(q.type, ignoreCase = true) -> "SOAL ISIAN"
+                                            "URAIAN".equals(q.type, ignoreCase = true) -> "SOAL URAIAN"
+                                            else -> (q.type ?: "PILIHAN GANDA").replace("_", " ")
+                                        }
+                                        Text(
+                                            text = typeLabel,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = SlateGray,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
                                 }
                             }
 
@@ -1143,25 +1233,130 @@ fun ExamTakingScreen(
 
         // 4. Konfirmasi Selesai Ujian
         if (showFinishConfirmation) {
+            val answeredCount = studentAnswers.size
+            val flaggedCount = flaggedQuestions.size
+            val unAnsweredCount = (questions.size - answeredCount).coerceAtLeast(0)
+
             AlertDialog(
-                onDismissRequest = { showFinishConfirmation = false },
+                onDismissRequest = { if (!isSubmitting) showFinishConfirmation = false },
                 icon = {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF059669),
-                        modifier = Modifier.size(36.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFECFDF5)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = Color(0xFF059669),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 },
                 title = {
-                    Text("Kumpulkan Jawaban Ujian?", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Kumpulkan Jawaban Ujian?",
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy,
+                        textAlign = TextAlign.Center
+                    )
                 },
                 text = {
-                    Text(
-                        text = "Anda telah menjawab ${studentAnswers.size} dari ${questions.size} soal. Pastikan semua soal telah diperiksa sebelum mengumpulkan ujian.",
-                        fontSize = 13.sp,
-                        color = SlateGray
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Pastikan seluruh soal telah diperiksa sebelum menyelesaikan pengerjaan.",
+                            fontSize = 12.sp,
+                            color = SlateGray,
+                            lineHeight = 17.sp,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // 3 Summary Stat Pills
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Terjawab
+                            Surface(
+                                color = Color(0xFFECFDF5),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(text = "$answeredCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF047857))
+                                    Text(text = "Dijawab", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF059669))
+                                }
+                            }
+                            // Ragu-ragu
+                            Surface(
+                                color = Color(0xFFFFFBEB),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFFDE68A)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(text = "$flaggedCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFB45309))
+                                    Text(text = "Ragu-ragu", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFD97706))
+                                }
+                            }
+                            // Belum
+                            Surface(
+                                color = Color(0xFFF1F5F9),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(text = "$unAnsweredCount", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
+                                    Text(text = "Belum", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF64748B))
+                                }
+                            }
+                        }
+
+                        if (unAnsweredCount > 0 || flaggedCount > 0) {
+                            Surface(
+                                color = Color(0xFFFFF7ED),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, Color(0xFFFED7AA)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFFC2410C),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Masih ada soal belum dijawab atau ragu-ragu.",
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF9A3412),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 },
                 confirmButton = {
                     Button(
@@ -1201,17 +1396,20 @@ fun ExamTakingScreen(
                                 showSubmitSuccessDialog = true
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                        shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text(if (isSubmitting) "Mengumpulkan..." else "Ya, Kumpulkan")
+                        Text(if (isSubmitting) "Mengumpulkan..." else "Ya, Kumpulkan", fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    OutlinedButton(
                         enabled = !isSubmitting,
-                        onClick = { showFinishConfirmation = false }
+                        onClick = { showFinishConfirmation = false },
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, BorderStrokeColor)
                     ) {
-                        Text("Periksa Lagi")
+                        Text("Periksa Lagi", color = DarkNavy, fontWeight = FontWeight.SemiBold)
                     }
                 }
             )
