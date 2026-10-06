@@ -1,8 +1,10 @@
 package com.sch.sekolah_mobile_app.ui.screens.izin
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -180,6 +182,9 @@ fun IzinDetailScreen(
                 }
             }
 
+            // Approval Status Timeline Stepper
+            ApprovalTimelineCard(item = item)
+
             // Ringkasan Data Izin
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -351,3 +356,153 @@ private data class Tuple5<A, B, C, D, E>(
     val d: D,
     val e: E
 )
+
+@Composable
+private fun ApprovalTimelineCard(item: SuratIzinItemMobile) {
+    val isApproved = item.status.equals("APPROVED", ignoreCase = true)
+    val isRejected = item.status.equals("REJECTED", ignoreCase = true)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStrokeColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Alur Verifikasi Surat Izin",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkNavy
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Step 1: Diajukan
+            TimelineStepItem(
+                title = "Permohonan Diajukan",
+                subtitle = "Surat izin dibuat oleh siswa / wali murid",
+                timestamp = item.createdAt,
+                isCompleted = true,
+                isActive = false,
+                isLast = false
+            )
+
+            // Step 2: Verifikasi Guru
+            TimelineStepItem(
+                title = if (isApproved) "Disetujui Guru Penanggung Jawab" else if (isRejected) "Ditolak Guru Penanggung Jawab" else "Menunggu Verifikasi Guru",
+                subtitle = if (isApproved) "Disetujui oleh ${item.respondedBy ?: (item.guruPenanggungJawabNama ?: "Guru")}" else if (isRejected) "Ditolak: ${item.catatanGuru ?: "Alasan tidak memenuhi kriteria"}" else "Menunggu tinjauan oleh ${item.guruPenanggungJawabNama ?: "Wali Kelas"}",
+                timestamp = item.respondedAt,
+                isCompleted = isApproved || isRejected,
+                isError = isRejected,
+                isActive = !isApproved && !isRejected,
+                isLast = false
+            )
+
+            // Step 3: Pencatatan Absensi
+            TimelineStepItem(
+                title = "Sinkronisasi Presensi Kelas",
+                subtitle = if (isApproved) "Status kehadiran otomatis tercatat resmi sebagai '${item.kategori}'" else if (isRejected) "Tidak diakui sebagai izin resmi sekolah" else "Akan diperbarui otomatis setelah disetujui",
+                timestamp = if (isApproved) item.respondedAt else null,
+                isCompleted = isApproved,
+                isError = isRejected,
+                isActive = false,
+                isLast = true
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineStepItem(
+    title: String,
+    subtitle: String,
+    timestamp: String? = null,
+    isCompleted: Boolean,
+    isError: Boolean = false,
+    isActive: Boolean = false,
+    isLast: Boolean = false
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(24.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .background(
+                        when {
+                            isError -> Color(0xFFFEE2E2)
+                            isCompleted -> Color(0xFFDCFCE7)
+                            isActive -> Color(0xFFFEF3C7)
+                            else -> Color(0xFFF1F5F9)
+                        },
+                        CircleShape
+                    )
+                    .border(
+                        1.dp,
+                        when {
+                            isError -> Color(0xFFEF4444)
+                            isCompleted -> Color(0xFF10B981)
+                            isActive -> Color(0xFFF59E0B)
+                            else -> Color(0xFFCBD5E1)
+                        },
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isCompleted || isError || isActive) {
+                    Icon(
+                        imageVector = when {
+                            isError -> Icons.Default.Close
+                            isCompleted -> Icons.Default.Check
+                            else -> Icons.Default.HourglassTop
+                        },
+                        contentDescription = null,
+                        tint = when {
+                            isError -> Color(0xFFB91C1C)
+                            isCompleted -> Color(0xFF047857)
+                            else -> Color(0xFFB45309)
+                        },
+                        modifier = Modifier.size(11.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(Color(0xFF94A3B8), CircleShape)
+                    )
+                }
+            }
+            if (!isLast) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(34.dp)
+                        .background(if (isCompleted) Color(0xFF86EFAC) else Color(0xFFE2E8F0))
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.padding(bottom = if (!isLast) 12.dp else 0.dp)) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isError) Color(0xFFB91C1C) else DarkNavy
+            )
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = SlateGray,
+                lineHeight = 15.sp
+            )
+            if (!timestamp.isNullOrBlank()) {
+                Text(
+                    text = timestamp,
+                    fontSize = 10.sp,
+                    color = SlateLight,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+    }
+}

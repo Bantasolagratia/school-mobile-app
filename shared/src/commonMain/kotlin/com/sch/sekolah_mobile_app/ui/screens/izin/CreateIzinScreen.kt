@@ -445,49 +445,85 @@ fun CreateIzinScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (selectedFile == null) {
-                        OutlinedButton(
+                        Surface(
                             onClick = { openFilePicker() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryTeal)
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF8FAFC),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.UploadFile,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Pilih Dokumen (Gambar / PDF)", fontSize = 13.sp)
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 20.dp, horizontal = 16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Surface(
+                                    shape = androidx.compose.foundation.shape.CircleShape,
+                                    color = PrimaryTealContainer,
+                                    modifier = Modifier.size(44.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudUpload,
+                                            contentDescription = null,
+                                            tint = PrimaryTeal,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "Ketuk untuk Memilih Berkas Bukti",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Format PDF, JPG, atau PNG (Maksimal 5 MB)",
+                                    fontSize = 11.sp,
+                                    color = SlateGray
+                                )
+                            }
                         }
                     } else {
                         // File Selected Preview Card
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = PrimaryTealContainer.copy(alpha = 0.5f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryTealLight),
+                            shape = RoundedCornerShape(12.dp),
+                            color = PrimaryTealContainer.copy(alpha = 0.45f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.4f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (selectedFile?.mimeType == "application/pdf") Icons.Default.PictureAsPdf else Icons.Default.Image,
-                                    contentDescription = null,
-                                    tint = PrimaryTeal,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = if (selectedFile?.mimeType == "application/pdf") Icons.Default.PictureAsPdf else Icons.Default.Image,
+                                            contentDescription = null,
+                                            tint = PrimaryTeal,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = selectedFile?.name ?: "Dokumen",
-                                        fontSize = 12.sp,
+                                        fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = PrimaryTealDark
+                                        color = DarkNavy
                                     )
                                     val sizeKb = (selectedFile?.sizeBytes ?: 0) / 1024
                                     Text(
-                                        text = "${sizeKb} KB • ${selectedFile?.mimeType}",
+                                        text = "${sizeKb} KB • ${selectedFile?.mimeType ?: "-"}",
                                         fontSize = 10.sp,
                                         color = SlateGray
                                     )

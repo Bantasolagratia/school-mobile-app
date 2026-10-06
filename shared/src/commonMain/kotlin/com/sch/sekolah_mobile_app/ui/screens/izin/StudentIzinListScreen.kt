@@ -337,7 +337,8 @@ private fun IzinCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStrokeColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
             modifier = Modifier
@@ -413,6 +414,7 @@ private fun IzinCard(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = SurfaceVariantColor,
+                    border = androidx.compose.foundation.BorderStroke(0.5.dp, BorderStrokeColor),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -443,44 +445,63 @@ private fun IzinCard(
 
 @Composable
 fun CategoryBadge(kategori: String) {
-    val (label, bg, fg) = when (kategori.uppercase()) {
-        "SAKIT" -> Triple("Sakit", Color(0xFFFEF3C7), Color(0xFFB45309))
-        "KELUAR_SEKOLAH" -> Triple("Keluar Sekolah", Color(0xFFCCFBF1), Color(0xFF0F766E))
-        else -> Triple("Lainnya", Color(0xFFF1F5F9), Color(0xFF475569))
+    val (label, bg, fg, border) = when (kategori.uppercase()) {
+        "SAKIT" -> Quadruple("Sakit", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFDE68A))
+        "KELUAR_SEKOLAH" -> Quadruple("Keluar Sekolah", Color(0xFFCCFBF1), Color(0xFF0F766E), Color(0xFF99F6E4))
+        else -> Quadruple("Lainnya", Color(0xFFF1F5F9), Color(0xFF475569), Color(0xFFE2E8F0))
     }
 
     Surface(
         color = bg,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(999.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, border)
     ) {
         Text(
             text = label,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             color = fg,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
         )
     }
 }
 
 @Composable
 fun StatusBadge(status: String) {
-    val (label, bg, fg) = when (status.uppercase()) {
-        "APPROVED" -> Triple("Disetujui", Color(0xFFDCFCE7), Color(0xFF15803D))
-        "REJECTED" -> Triple("Ditolak", Color(0xFFFEE2E2), Color(0xFFB91C1C))
-        else -> Triple("Menunggu", Color(0xFFFEF9C3), Color(0xFFA16207))
+    val (label, bg, fg, border) = when (status.uppercase()) {
+        "APPROVED" -> Quadruple("Disetujui", Color(0xFFDCFCE7), Color(0xFF15803D), Color(0xFFBBF7D0))
+        "REJECTED" -> Quadruple("Ditolak", Color(0xFFFEE2E2), Color(0xFFB91C1C), Color(0xFFFECACA))
+        else -> Quadruple("Menunggu", Color(0xFFFEF9C3), Color(0xFFA16207), Color(0xFFFEF08A))
     }
 
     Surface(
         color = bg,
-        shape = RoundedCornerShape(6.dp)
+        shape = RoundedCornerShape(999.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, border)
     ) {
-        Text(
-            text = label,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = fg,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        )
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .background(fg, CircleShape)
+            )
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = fg
+            )
+        }
     }
 }
+
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
