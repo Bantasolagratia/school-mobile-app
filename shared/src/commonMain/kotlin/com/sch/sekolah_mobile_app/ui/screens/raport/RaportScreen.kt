@@ -1,7 +1,9 @@
 package com.sch.sekolah_mobile_app.ui.screens.raport
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -580,6 +582,17 @@ private fun AttendancePill(
     }
 }
 
+private data class GradeBadgeColor(val bg: Color, val border: Color, val fg: Color)
+
+private fun getGradeBadgeColor(predikat: String?): GradeBadgeColor {
+    return when (predikat?.uppercase()?.trim()) {
+        "A" -> GradeBadgeColor(Color(0xFFECFDF5), Color(0xFFA7F3D0), Color(0xFF047857))
+        "B" -> GradeBadgeColor(Color(0xFFEFF6FF), Color(0xFFBFDBFE), Color(0xFF1D4ED8))
+        "C" -> GradeBadgeColor(Color(0xFFFFFBEB), Color(0xFFFDE68A), Color(0xFFB45309))
+        else -> GradeBadgeColor(Color(0xFFFFF1F2), Color(0xFFFECDD3), Color(0xFFBE123C))
+    }
+}
+
 @Composable
 private fun SubjectGradeCard(
     subject: SubjectRaportItem,
@@ -593,6 +606,7 @@ private fun SubjectGradeCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, BorderStrokeColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -605,16 +619,18 @@ private fun SubjectGradeCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Grade Badge Circle
+                val badgeColors = getGradeBadgeColor(subject.predikat)
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isGradeVisible) {
-                                if (subject.lulus == true) Color(0xFFECFDF5) else Color(0xFFFEF2F2)
-                            } else {
-                                Color(0xFFFEF3C7)
-                            }
+                            if (isGradeVisible) badgeColors.bg else Color(0xFFFEF3C7)
+                        )
+                        .border(
+                            1.dp,
+                            if (isGradeVisible) badgeColors.border else Color(0xFFFDE68A),
+                            CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -623,7 +639,7 @@ private fun SubjectGradeCard(
                             text = subject.predikat,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (subject.lulus == true) Color(0xFF047857) else Color(0xFFDC2626)
+                            color = badgeColors.fg
                         )
                     } else {
                         Icon(
