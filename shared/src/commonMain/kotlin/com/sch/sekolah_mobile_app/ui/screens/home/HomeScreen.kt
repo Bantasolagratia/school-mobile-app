@@ -161,6 +161,7 @@ fun HomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 if (!isCardFlipped || !canFlipToExamCard) {
@@ -507,6 +508,7 @@ fun HomeScreen(
                         .clickable { onNavigateToJadwal() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    border = BorderStroke(1.dp, BorderStrokeColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
@@ -581,6 +583,7 @@ fun HomeScreen(
                         .clickable { onNavigateToTeacherJadwal() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    border = BorderStroke(1.dp, BorderStrokeColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
@@ -653,6 +656,7 @@ fun HomeScreen(
                         .clickable { onNavigateToGuru() },
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    border = BorderStroke(1.dp, BorderStrokeColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
@@ -825,7 +829,8 @@ fun HomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor)
+                colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor),
+                border = BorderStroke(1.dp, BorderStrokeColor)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -882,6 +887,7 @@ private fun QuickInfoCard(
         modifier = clickableModifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
+        border = BorderStroke(0.75.dp, BorderStrokeColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
