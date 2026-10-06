@@ -116,6 +116,22 @@ class AuthRepository(
         return profile
     }
 
+    suspend fun completeOnboarding(
+        otpCode: String,
+        newUsername: String,
+        newPassword: String
+    ): UserProfileResponse {
+        val token = getAccessToken() ?: throw IllegalStateException("Sesi Anda tidak ditemukan. Silakan masuk kembali.")
+        apiClient.completeOnboarding(token, otpCode, newUsername, newPassword)
+        val updatedProfile = apiClient.fetchProfile(token)
+        cachedProfile = updatedProfile
+        try {
+            val jsonStr = apiClient.json.encodeToString(updatedProfile)
+            storage.setString(KEY_PROFILE_JSON, jsonStr)
+        } catch (_: Exception) {}
+        return updatedProfile
+    }
+
     suspend fun verifyStudentIdentity(nis: String): IdentityResponse {
         return verifyIdentity("MURID", nis)
     }

@@ -64,6 +64,19 @@ data class SessionResponse(
 )
 
 @Serializable
+data class CompleteOnboardingRequest(
+    val otpCode: String,
+    val newUsername: String,
+    val newPassword: String
+)
+
+@Serializable
+data class CompleteOnboardingResponse(
+    val success: Boolean = false,
+    val message: String? = null
+)
+
+@Serializable
 data class UserIdentity(
     val id: String,
     val name: String? = null,
@@ -85,6 +98,8 @@ data class UserProfileResponse(
     val isTeacher: Boolean = false,
     val isStudent: Boolean = false,
     val isGuardian: Boolean = false,
+    val accountStatus: String? = null,
+    val mustOnboard: Boolean = false,
     val roles: List<String> = emptyList(),
     val identities: List<UserIdentity> = emptyList()
 ) {

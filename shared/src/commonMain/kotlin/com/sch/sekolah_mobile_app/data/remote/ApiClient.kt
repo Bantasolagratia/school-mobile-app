@@ -155,6 +155,41 @@ class ApiClient(
         return response.body()
     }
 
+    suspend fun completeOnboarding(
+        token: String,
+        otpCode: String,
+        newUsername: String,
+        newPassword: String
+    ): String {
+        val url = ApiConfig.getCompleteOnboardingUrl()
+        val response = httpClient.post(url) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+            setBody(CompleteOnboardingRequest(
+                otpCode = otpCode.trim(),
+                newUsername = newUsername.trim(),
+                newPassword = newPassword
+            ))
+        }
+
+        val responseText = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            var message = "Aktivasi akun gagal (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+
+        var message = "Aktivasi akun berhasil."
+        try {
+            val jsonTree = json.parseToJsonElement(responseText).jsonObject
+            message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+        } catch (_: Exception) {}
+        return message
+    }
+
     suspend fun getDaftarGuru(token: String): List<Guru> {
         val url = ApiConfig.getGuruUrl()
         val response = httpClient.get(url) {
