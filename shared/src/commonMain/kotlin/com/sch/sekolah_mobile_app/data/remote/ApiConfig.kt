@@ -71,6 +71,9 @@ object ApiConfig {
     fun getRegisterUrl(): String =
         "${getBaseUrl()}/api/auth-flow/register"
 
+    fun getCompleteOnboardingUrl(): String =
+        "${getBaseUrl()}/api/auth-flow/complete-onboarding"
+
     fun getGuruUrl(): String =
         "${getBaseUrl()}/api/management/guru"
 

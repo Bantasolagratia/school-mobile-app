@@ -37,6 +37,7 @@ import com.sch.sekolah_mobile_app.ui.screens.izin.CreateIzinScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.IzinDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.StudentIzinListScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.StudentQrScannerScreen
+import com.sch.sekolah_mobile_app.ui.screens.activation.ActivationScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherJadwalScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherQrKioskScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
@@ -57,6 +58,7 @@ import com.sch.sekolah_mobile_app.ui.theme.SekolahMobileTheme
 enum class ScreenState {
     LOGIN,
     REGISTER,
+    ACTIVATION,
     MAIN,
     EXAM_TAKING
 }
@@ -107,7 +109,18 @@ fun App() {
     }
 
     var screenState by remember {
-        mutableStateOf(if (authRepository.hasActiveSession()) ScreenState.MAIN else ScreenState.LOGIN)
+        mutableStateOf(
+            if (authRepository.hasActiveSession()) {
+                val prof = authRepository.getCachedProfile()
+                if (prof?.mustOnboard == true || prof?.accountStatus == "PENDING_ACTIVATION") {
+                    ScreenState.ACTIVATION
+                } else {
+                    ScreenState.MAIN
+                }
+            } else {
+                ScreenState.LOGIN
+            }
+        )
     }
     var currentTab by remember { mutableStateOf(NavigationTab.HOME) }
     var currentSubScreen by remember { mutableStateOf(SubScreen.NONE) }
@@ -188,13 +201,38 @@ fun App() {
                     LoginScreen(
                         authRepository = authRepository,
                         onLoginSuccess = {
-                            currentProfile = authRepository.getCachedProfile()
+                            val prof = authRepository.getCachedProfile()
+                            currentProfile = prof
+                            currentTab = NavigationTab.HOME
+                            currentSubScreen = SubScreen.NONE
+                            if (prof?.mustOnboard == true || prof?.accountStatus == "PENDING_ACTIVATION") {
+                                screenState = ScreenState.ACTIVATION
+                            } else {
+                                screenState = ScreenState.MAIN
+                            }
+                        },
+                        onNavigateToRegister = {
+                            screenState = ScreenState.REGISTER
+                        }
+                    )
+                }
+
+                ScreenState.ACTIVATION -> {
+                    ActivationScreen(
+                        authRepository = authRepository,
+                        currentProfile = currentProfile,
+                        onActivationSuccess = { updatedProfile ->
+                            currentProfile = updatedProfile
                             currentTab = NavigationTab.HOME
                             currentSubScreen = SubScreen.NONE
                             screenState = ScreenState.MAIN
                         },
-                        onNavigateToRegister = {
-                            screenState = ScreenState.REGISTER
+                        onSignOut = {
+                            coroutineScope.launch {
+                                authRepository.logout()
+                                currentProfile = null
+                                screenState = ScreenState.LOGIN
+                            }
                         }
                     )
                 }
