@@ -326,7 +326,7 @@ fun CalendarScreen(
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .aspectRatio(1.2f)
-                                                .clip(RoundedCornerShape(8.dp))
+                                                .clip(RoundedCornerShape(10.dp))
                                                 .background(
                                                     when {
                                                         isSelected -> PrimaryTeal
@@ -344,7 +344,7 @@ fun CalendarScreen(
                                                 Text(
                                                     text = dayNum.toString(),
                                                     fontSize = 12.sp,
-                                                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
+                                                    fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Medium,
                                                     color = when {
                                                         isSelected -> Color.White
                                                         isToday -> OnPrimaryTealContainer
@@ -543,9 +543,10 @@ private fun ScheduleCardItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = BorderStroke(1.dp, BorderStrokeColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -555,27 +556,29 @@ private fun ScheduleCardItem(
             ) {
                 Surface(
                     color = if (jadwal.isCategoryGuru) PrimaryTealContainer else SurfaceVariantColor,
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(999.dp),
+                    border = BorderStroke(1.dp, if (jadwal.isCategoryGuru) PrimaryTeal.copy(alpha = 0.3f) else BorderStrokeColor)
                 ) {
                     Text(
                         text = if (jadwal.isCategoryGuru) "KEGIATAN GURU" else "KELAS ${jadwal.kelas ?: "SEMUA"}",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (jadwal.isCategoryGuru) OnPrimaryTealContainer else DarkNavy,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
 
                 Surface(
                     color = if (jadwal.status == "SELESAI") SurfaceVariantColor else PrimaryTealContainer,
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(999.dp),
+                    border = BorderStroke(1.dp, if (jadwal.status == "SELESAI") BorderStrokeColor else PrimaryTeal.copy(alpha = 0.3f))
                 ) {
                     Text(
                         text = jadwal.status ?: "TERJADWAL",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (jadwal.status == "SELESAI") SlateGray else PrimaryTealDark,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
             }
@@ -710,7 +713,7 @@ private fun LegendItem(color: Color, label: String) {
 private fun NationalHolidayCardItem(holiday: NationalHolidayMobile) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
         border = BorderStroke(1.dp, Color(0xFFFECACA)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -722,7 +725,8 @@ private fun NationalHolidayCardItem(holiday: NationalHolidayMobile) {
             Surface(
                 color = Color(0xFFFEE2E2),
                 shape = CircleShape,
-                modifier = Modifier.size(42.dp)
+                border = BorderStroke(1.dp, Color(0xFFFECACA)),
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -737,17 +741,17 @@ private fun NationalHolidayCardItem(holiday: NationalHolidayMobile) {
             Column(modifier = Modifier.weight(1f)) {
                 Surface(
                     color = ErrorRed,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
                         text = "HARI LIBUR NASIONAL",
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = holiday.name,
                     fontSize = 15.sp,
@@ -783,20 +787,16 @@ private fun SchoolEventCardItem(event: SchoolEventMobile) {
         isExam -> Color(0xFFEA580C)
         else -> Color(0xFF2563EB)
     }
+    val iconTint = badgeColor
     val badgeText = when {
         isHoliday -> "LIBUR SEKOLAH"
         isExam -> "UJIAN & ASESMEN"
         else -> "AGENDA SEKOLAH"
     }
-    val iconTint = when {
-        isHoliday -> ErrorRed
-        isExam -> Color(0xFFEA580C)
-        else -> Color(0xFF2563EB)
-    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -809,28 +809,29 @@ private fun SchoolEventCardItem(event: SchoolEventMobile) {
             ) {
                 Surface(
                     color = badgeColor,
-                    shape = RoundedCornerShape(4.dp)
+                    shape = RoundedCornerShape(999.dp)
                 ) {
                     Text(
                         text = badgeText,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
 
                 if (!event.endDate.isNullOrBlank() && event.endDate != event.date) {
                     Surface(
-                        color = Color.White.copy(alpha = 0.8f),
-                        shape = RoundedCornerShape(4.dp)
+                        color = Color.White.copy(alpha = 0.85f),
+                        shape = RoundedCornerShape(999.dp),
+                        border = BorderStroke(0.5.dp, borderColor)
                     ) {
                         Text(
                             text = "${event.date} s/d ${event.endDate}",
                             fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = SlateGray,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
