@@ -9,7 +9,7 @@ import com.sch.sekolah_mobile_app.data.storage.AndroidPlatformContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        AndroidPlatformContext.init(this)
+        AndroidPlatformContext.init(this, BuildConfig.SERVER_HOST)
         AndroidPlatformContext.setActivity(this)
         enableEdgeToEdge()
         setContent {
