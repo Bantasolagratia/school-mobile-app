@@ -190,13 +190,43 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = if (isGuru) "KARTU IDENTITAS GURU" else "KARTU PELAJAR DIGITAL",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White.copy(alpha = 0.8f),
-                                    letterSpacing = 1.sp
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // EMV Smart Chip
+                                    Surface(
+                                        modifier = Modifier.size(width = 30.dp, height = 22.dp),
+                                        shape = RoundedCornerShape(5.dp),
+                                        color = Color(0xFFFBBF24),
+                                        border = BorderStroke(1.dp, Color(0xFFD97706))
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(1.dp)
+                                                    .fillMaxHeight()
+                                                    .align(Alignment.Center)
+                                                    .background(Color(0xFFB45309).copy(alpha = 0.45f))
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .height(1.dp)
+                                                    .fillMaxWidth()
+                                                    .align(Alignment.Center)
+                                                    .background(Color(0xFFB45309).copy(alpha = 0.45f))
+                                            )
+                                        }
+                                    }
+
+                                    Text(
+                                        text = if (isGuru) "KARTU IDENTITAS GURU" else "KARTU PELAJAR DIGITAL",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(alpha = 0.92f),
+                                        letterSpacing = 1.2.sp
+                                    )
+                                }
 
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
@@ -501,120 +531,63 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Menu Akademik & Layanan",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = DarkNavy
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Menu Akademik & Layanan",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkNavy
+                )
+                Surface(
+                    color = PrimaryTealContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = if (isGuru) "Panel Guru" else "Portal Siswa",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = PrimaryTealDark,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             if (isGuru) {
-                // Modul Guru: Menu paling atas adalah Kalender
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToJadwal() },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    border = BorderStroke(1.dp, BorderStrokeColor),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(18.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryTealContainer),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CalendarToday,
-                                contentDescription = "Kalender",
-                                tint = PrimaryTeal,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "Kalender",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DarkNavy
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = PrimaryTealContainer,
-                                    shape = RoundedCornerShape(4.dp)
-                                ) {
-                                    Text(
-                                        text = "Akademik",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = OnPrimaryTealContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            Text(
-                                text = "Agenda kegiatan sekolah, kalender akademik & jadwal penting",
-                                fontSize = 12.sp,
-                                color = SlateGray
-                            )
-                        }
-
-                        Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = "Buka",
-                            tint = PrimaryTeal
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                // Menu Baru: Jadwal (Mengajar, Pengawas & QR Kiosk)
+                // Guru: Featured Hero Card Jadwal & Pengawas
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToTeacherJadwal() },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    border = BorderStroke(1.dp, BorderStrokeColor),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(18.dp)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFEDE9FE)),
-                            contentAlignment = Alignment.Center
+                        Surface(
+                            modifier = Modifier.size(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color(0xFFEDE9FE)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = "Jadwal",
-                                tint = Color(0xFF6D28D9),
-                                modifier = Modifier.size(28.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Schedule,
+                                    contentDescription = "Jadwal",
+                                    tint = Color(0xFF7C3AED),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -622,22 +595,22 @@ fun HomeScreen(
                         Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "Jadwal",
-                                    fontSize = 16.sp,
+                                    text = "Jadwal KBM & Pengawas",
+                                    fontSize = 15.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkNavy
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
                                     color = Color(0xFFEDE9FE),
-                                    shape = RoundedCornerShape(4.dp)
+                                    shape = RoundedCornerShape(999.dp)
                                 ) {
                                     Text(
-                                        text = "KBM & Pengawas",
-                                        fontSize = 10.sp,
+                                        text = "QR Kiosk",
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF6D28D9),
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                     )
                                 }
                             }
@@ -645,49 +618,84 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = "Jadwal mengajar, tugas pengawas ujian & presensi QR Kiosk",
+                                text = "Jadwal mengajar, penugasan ujian & scan presensi sesi",
                                 fontSize = 12.sp,
-                                color = SlateGray
+                                color = SlateGray,
+                                lineHeight = 16.sp
                             )
                         }
 
                         Icon(
                             Icons.Default.ChevronRight,
                             contentDescription = "Buka",
-                            tint = Color(0xFF6D28D9)
+                            tint = SlateLight,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Bento Grid 2 Kolom untuk Guru
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CalendarToday,
+                        iconBgColor = Color(0xFFE0F2FE),
+                        iconTint = Color(0xFF0284C7),
+                        badgeText = "Agenda",
+                        badgeColor = Color(0xFFE0F2FE),
+                        badgeTextColor = Color(0xFF0369A1),
+                        title = "Kalender",
+                        subtitle = "Kegiatan & agenda sekolah",
+                        onClick = onNavigateToJadwal
+                    )
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Groups,
+                        iconBgColor = Color(0xFFFEF3C7),
+                        iconTint = Color(0xFFD97706),
+                        badgeText = "Kontak",
+                        badgeColor = Color(0xFFFEF3C7),
+                        badgeTextColor = Color(0xFFB45309),
+                        title = "Direktori Guru",
+                        subtitle = "Daftar rekan pengajar",
+                        onClick = onNavigateToGuru
+                    )
+                }
             } else {
-                // Siswa: Main Featured Card Direktori Guru
+                // Siswa: Featured Hero Card Direktori Guru
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToGuru() },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    border = BorderStroke(1.dp, BorderStrokeColor),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(18.dp)
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .padding(18.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(PrimaryTealContainer),
-                            contentAlignment = Alignment.Center
+                        Surface(
+                            modifier = Modifier.size(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = PrimaryTealContainer
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Groups,
-                                contentDescription = "Direktori Guru",
-                                tint = PrimaryTeal,
-                                modifier = Modifier.size(28.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Groups,
+                                    contentDescription = "Direktori Guru",
+                                    tint = PrimaryTealDark,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -696,21 +704,21 @@ fun HomeScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = "Direktori Guru",
-                                    fontSize = 16.sp,
+                                    fontSize = 15.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DarkNavy
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
                                     color = PrimaryTealContainer,
-                                    shape = RoundedCornerShape(4.dp)
+                                    shape = RoundedCornerShape(999.dp)
                                 ) {
                                     Text(
-                                        text = "Utama",
-                                        fontSize = 10.sp,
+                                        text = "Kontak Resmi",
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = OnPrimaryTealContainer,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
                                     )
                                 }
                             }
@@ -718,117 +726,120 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                text = "Akses kontak WhatsApp, telepon, dan daftar pengajar sekolah",
+                                text = "Hubungi wali kelas dan dewan guru via WhatsApp & telepon",
                                 fontSize = 12.sp,
-                                color = SlateGray
+                                color = SlateGray,
+                                lineHeight = 16.sp
                             )
                         }
 
                         Icon(
                             Icons.Default.ChevronRight,
                             contentDescription = "Buka",
-                            tint = PrimaryTeal
+                            tint = SlateLight,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Additional feature cards untuk Siswa (responsive 2-column if tablet/wide screen)
-                if (isWideScreen) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        QuickInfoCard(
+                // Bento Action Matrix 2 Kolom untuk Siswa
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
+                        iconBgColor = Color(0xFFE0F2FE),
+                        iconTint = Color(0xFF0284C7),
+                        badgeText = "Bahan Ajar",
+                        badgeColor = Color(0xFFE0F2FE),
+                        badgeTextColor = Color(0xFF0369A1),
+                        title = "Mata Pelajaran",
+                        subtitle = "Modul & materi bacaan",
+                        onClick = onNavigateToMapel
+                    )
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CalendarToday,
+                        iconBgColor = Color(0xFFFEF3C7),
+                        iconTint = Color(0xFFD97706),
+                        badgeText = "Agenda",
+                        badgeColor = Color(0xFFFEF3C7),
+                        badgeTextColor = Color(0xFFB45309),
+                        title = "Kalender",
+                        subtitle = "Jadwal kelas & ujian",
+                        onClick = onNavigateToJadwal
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.AutoMirrored.Filled.Assignment,
+                        iconBgColor = Color(0xFFFEE2E2),
+                        iconTint = Color(0xFFE11D48),
+                        badgeText = "CBT Online",
+                        badgeColor = Color(0xFFFEE2E2),
+                        badgeTextColor = Color(0xFFBE123C),
+                        title = "Tugas & Ujian",
+                        subtitle = "Sesi ujian terjadwal",
+                        onClick = onNavigateToUjian
+                    )
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.History,
+                        iconBgColor = Color(0xFFEDE9FE),
+                        iconTint = Color(0xFF7C3AED),
+                        badgeText = "Review",
+                        badgeColor = Color(0xFFEDE9FE),
+                        badgeTextColor = Color(0xFF6D28D9),
+                        title = "Riwayat Ujian",
+                        subtitle = "Histori & pembahasan",
+                        onClick = onNavigateToExamHistory
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    BentoActionTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Description,
+                        iconBgColor = Color(0xFFDCFCE7),
+                        iconTint = Color(0xFF16A34A),
+                        badgeText = "Presensi",
+                        badgeColor = Color(0xFFDCFCE7),
+                        badgeTextColor = Color(0xFF15803D),
+                        title = "Surat Izin",
+                        subtitle = "Form & status persetujuan",
+                        onClick = onNavigateToIzin
+                    )
+                    if (isRaportModuleEnabled) {
+                        BentoActionTile(
                             modifier = Modifier.weight(1f),
-                            icon = Icons.AutoMirrored.Filled.MenuBook,
-                            title = "Mata Pelajaran",
-                            subtitle = "Bahan ajar & materi bacaan",
-                            onClick = onNavigateToMapel
+                            icon = Icons.Default.Assessment,
+                            iconBgColor = Color(0xFFF3E8FF),
+                            iconTint = Color(0xFF9333EA),
+                            badgeText = "Hasil Studi",
+                            badgeColor = Color(0xFFF3E8FF),
+                            badgeTextColor = Color(0xFF7E22CE),
+                            title = "Rapor Semester",
+                            subtitle = "Capaian & rekap presensi",
+                            onClick = onNavigateToRaport
                         )
-                        QuickInfoCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.CalendarToday,
-                            title = "Kalender",
-                            subtitle = "Agenda kelas, ujian & kegiatan",
-                            onClick = onNavigateToJadwal
-                        )
-                        QuickInfoCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.AutoMirrored.Filled.Assignment,
-                            title = "Tugas & Ujian",
-                            subtitle = "Status pengerjaan & jadwal ujian",
-                            onClick = onNavigateToUjian
-                        )
-                        QuickInfoCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.History,
-                            title = "Riwayat Ujian",
-                            subtitle = "Histori & review nilai",
-                            onClick = onNavigateToExamHistory
-                        )
-                        QuickInfoCard(
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Description,
-                            title = "Surat Izin",
-                            subtitle = "Pengajuan & riwayat izin",
-                            onClick = onNavigateToIzin
-                        )
-                        if (isRaportModuleEnabled) {
-                            QuickInfoCard(
-                                modifier = Modifier.weight(1f),
-                                icon = Icons.Default.Assessment,
-                                title = "Rapor Semester",
-                                subtitle = "Capaian nilai & presensi",
-                                onClick = onNavigateToRaport
-                            )
-                        }
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        QuickInfoCard(
-                            icon = Icons.AutoMirrored.Filled.MenuBook,
-                            title = "Mata Pelajaran",
-                            subtitle = "Bahan ajar & materi bacaan",
-                            onClick = onNavigateToMapel
-                        )
-                        QuickInfoCard(
-                            icon = Icons.Default.CalendarToday,
-                            title = "Kalender",
-                            subtitle = "Agenda kelas, ujian & kegiatan",
-                            onClick = onNavigateToJadwal
-                        )
-                        QuickInfoCard(
-                            icon = Icons.AutoMirrored.Filled.Assignment,
-                            title = "Tugas & Ujian",
-                            subtitle = "Status pengerjaan & jadwal ujian",
-                            onClick = onNavigateToUjian
-                        )
-                        QuickInfoCard(
-                            icon = Icons.Default.History,
-                            title = "Riwayat Ujian & Nilai",
-                            subtitle = "Lihat histori ujian & review pembahasan",
-                            onClick = onNavigateToExamHistory
-                        )
-                        QuickInfoCard(
-                            icon = Icons.Default.Description,
-                            title = "Surat Izin",
-                            subtitle = "Pengajuan & riwayat izin siswa",
-                            onClick = onNavigateToIzin
-                        )
-                        AnimatedVisibility(
-                            visible = isRaportModuleEnabled,
-                            enter = fadeIn() + expandVertically(),
-                            exit = fadeOut() + shrinkVertically()
-                        ) {
-                            QuickInfoCard(
-                                icon = Icons.Default.Assessment,
-                                title = "Rapor Semester",
-                                subtitle = "Capaian nilai & presensi",
-                                onClick = onNavigateToRaport
-                            )
-                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -838,37 +849,47 @@ fun HomeScreen(
             // Announcement Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceVariantColor),
-                border = BorderStroke(1.dp, BorderStrokeColor)
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Info,
-                        contentDescription = null,
-                        tint = PrimaryTeal,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = if (isGuru) "Pusat Jadwal & Presensi Guru" else "Pengumuman Akademik",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = DarkNavy
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
+                    Surface(
+                        modifier = Modifier.size(36.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = PrimaryTealContainer
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = PrimaryTealDark,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (isGuru) "Pusat Jadwal & Presensi Guru" else "Pengumuman Akademik",
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = DarkNavy
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = if (isGuru)
                                 "Gunakan menu Jadwal untuk melihat penugasan mengajar atau pengawas ujian, dan aktifkan QR presensi Kiosk saat sesi dimulai."
                             else
                                 "Gunakan menu Direktori Guru untuk menghubungi wali kelas atau guru mata pelajaran terkait konsultasi belajar.",
-                            fontSize = 12.sp,
+                            fontSize = 11.5.sp,
                             color = SlateGray,
-                            lineHeight = 18.sp
+                            lineHeight = 16.5.sp
                         )
                     }
                 }
@@ -880,54 +901,81 @@ fun HomeScreen(
 }
 
 @Composable
-private fun QuickInfoCard(
+private fun BentoActionTile(
     icon: ImageVector,
+    iconBgColor: Color,
+    iconTint: Color,
+    badgeText: String,
+    badgeColor: Color,
+    badgeTextColor: Color,
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null
+    onClick: () -> Unit
 ) {
-    val clickableModifier = if (onClick != null) {
-        modifier.clickable { onClick() }
-    } else {
-        modifier
-    }
-
     Card(
-        modifier = clickableModifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
-        border = BorderStroke(1.dp, BorderStrokeColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                modifier = Modifier.size(42.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = PrimaryTealContainer,
-                border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.18f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = icon, contentDescription = null, tint = PrimaryTealDark, modifier = Modifier.size(20.dp))
+                Surface(
+                    modifier = Modifier.size(38.dp),
+                    shape = RoundedCornerShape(11.dp),
+                    color = iconBgColor
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Surface(
+                    color = badgeColor,
+                    shape = RoundedCornerShape(999.dp)
+                ) {
+                    Text(
+                        text = badgeText,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = badgeTextColor,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.5.dp)
+                    )
                 }
             }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkNavy)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = subtitle, fontSize = 11.5.sp, color = SlateGray, lineHeight = 15.sp)
-            }
-            if (onClick != null) {
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = "Buka",
-                    tint = SlateLight,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = title,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = DarkNavy,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = SlateGray,
+                lineHeight = 14.sp,
+                maxLines = 1
+            )
         }
     }
 }
