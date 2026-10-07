@@ -102,14 +102,17 @@ fun HomeScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = if (isGuru) "Halo, $displayName 👨‍🏫" else "Halo, $displayName 👋",
-                        fontSize = if (isWideScreen) 26.sp else 22.sp,
+                        fontSize = if (isWideScreen) 25.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DarkNavy
+                        color = DarkNavy,
+                        letterSpacing = (-0.3).sp
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (isGuru) "Selamat datang di Portal Dewan Guru" else "Selamat datang di Portal Siswa",
-                        fontSize = 13.sp,
-                        color = SlateGray
+                        text = if (isGuru) "Portal Akademik & Administrasi Guru" else "Portal Pembelajaran & Siswa",
+                        fontSize = 12.5.sp,
+                        color = SlateGray,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 
@@ -118,8 +121,11 @@ fun HomeScreen(
                         BadgedBox(
                             badge = {
                                 if (unreadNotifCount > 0) {
-                                    Badge(containerColor = ErrorRed) {
-                                        Text("$unreadNotifCount")
+                                    Badge(
+                                        containerColor = ErrorRed,
+                                        contentColor = Color.White
+                                    ) {
+                                        Text("$unreadNotifCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -127,27 +133,29 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = "Pusat Notifikasi",
-                                tint = PrimaryTeal,
-                                modifier = Modifier.size(26.dp)
+                                tint = DarkNavy,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(PrimaryTealContainer),
-                        contentAlignment = Alignment.Center
+                    Surface(
+                        modifier = Modifier.size(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = PrimaryTealContainer,
+                        border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.25f)),
+                        shadowElevation = 1.dp
                     ) {
-                        Icon(
-                            imageVector = if (isGuru) Icons.Default.PersonOutline else Icons.Default.School,
-                            contentDescription = null,
-                            tint = PrimaryTeal,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isGuru) Icons.Default.PersonOutline else Icons.Default.School,
+                                contentDescription = null,
+                                tint = PrimaryTealDark,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -217,7 +225,8 @@ fun HomeScreen(
 
                                     Surface(
                                         color = if (!isGuru && examCard?.isBlacklisted == true) Color(0xFFEF4444) else AccentAmber,
-                                        shape = RoundedCornerShape(8.dp)
+                                        shape = RoundedCornerShape(999.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
                                     ) {
                                         Text(
                                             text = when {
@@ -225,10 +234,10 @@ fun HomeScreen(
                                                 examCard?.isBlacklisted == true -> "DICEKAL DARI UJIAN"
                                                 else -> "MURID AKTIF"
                                             },
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = if (!isGuru && examCard?.isBlacklisted == true) Color.White else DarkNavy,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                                         )
                                     }
                                 }
@@ -238,9 +247,10 @@ fun HomeScreen(
 
                             Text(
                                 text = displayName,
-                                fontSize = 20.sp,
+                                fontSize = 21.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = Color.White,
+                                letterSpacing = (-0.2).sp
                             )
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -885,34 +895,36 @@ private fun QuickInfoCard(
 
     Card(
         modifier = clickableModifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardSurface),
-        border = BorderStroke(0.75.dp, BorderStrokeColor),
+        border = BorderStroke(1.dp, BorderStrokeColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceVariantColor),
-                contentAlignment = Alignment.Center
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = PrimaryTealContainer,
+                border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.18f))
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(20.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(imageVector = icon, contentDescription = null, tint = PrimaryTealDark, modifier = Modifier.size(20.dp))
+                }
             }
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = DarkNavy)
-                Text(text = subtitle, fontSize = 11.sp, color = SlateGray)
+                Text(text = title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = DarkNavy)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = subtitle, fontSize = 11.5.sp, color = SlateGray, lineHeight = 15.sp)
             }
             if (onClick != null) {
                 Icon(
                     Icons.Default.ChevronRight,
                     contentDescription = "Buka",
-                    tint = PrimaryTeal,
+                    tint = SlateLight,
                     modifier = Modifier.size(18.dp)
                 )
             }
