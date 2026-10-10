@@ -14,36 +14,7 @@ object ApiConfig {
     private const val LEGACY_KEY_CUSTOM_HOST = "custom_server_host"
 
     fun getHost(): String {
-        val storage = getPlatformStorage()
-
-        // Bersihkan legacy key custom_server_host lama
-        storage.remove(LEGACY_KEY_CUSTOM_HOST)
-
-        val currentAppVersion = try {
-            "${PlatformAppInfo.getVersionName()}_${PlatformAppInfo.getVersionCode()}"
-        } catch (_: Exception) {
-            "1.0_1"
-        }
-
-        val cachedVersion = storage.getString(KEY_HOST_APP_VERSION, null)
-        val defaultHost = getDefaultServerHost()
-        val cachedHost = storage.getString(KEY_SERVER_HOST, null)?.trim()?.takeIf { it.isNotEmpty() }
-
-        // Jika baru install, update versi, atau masih tersimpan IP lama:
-        // baca ulang dari file konfigurasi (getDefaultServerHost) lalu masukkan ke cache
-        if (cachedVersion != currentAppVersion ||
-            cachedHost.isNullOrEmpty() ||
-            cachedHost == "100.69.213.116" ||
-            cachedHost == "192.168.18.94" ||
-            cachedHost == "10.0.2.2" ||
-            cachedHost == "localhost"
-        ) {
-            storage.setString(KEY_SERVER_HOST, defaultHost)
-            storage.setString(KEY_HOST_APP_VERSION, currentAppVersion)
-            return defaultHost
-        }
-
-        return cachedHost
+        return getDefaultServerHost()
     }
 
     fun getBaseUrl(): String {

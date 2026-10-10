@@ -6,13 +6,11 @@ import android.content.Context
 import android.content.SharedPreferences
 
 object AndroidPlatformContext {
-    private const val SIT_HOST = "https://development.taile61966.ts.net"
-
     private var appContext: Context? = null
     private var currentActivity: java.lang.ref.WeakReference<android.app.Activity>? = null
 
-    // Host server ditentukan oleh build flavor (sit/dev) di modul app, bukan input user.
-    var serverHost: String = SIT_HOST
+    // Host server ditentukan oleh build flavor (sit/dev) secara konsisten dari BuildConfig modul shared
+    var serverHost: String = com.sch.sekolah_mobile_app.shared.BuildConfig.SERVER_HOST
         private set
 
     fun init(context: Context, serverHost: String? = null) {
