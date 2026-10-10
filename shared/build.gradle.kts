@@ -82,6 +82,24 @@ android {
         minSdk = 26
     }
 
+    flavorDimensions += "env"
+    productFlavors {
+        create("sit") {
+            dimension = "env"
+            buildConfigField("String", "SERVER_HOST", "\"https://development.taile61966.ts.net\"")
+            buildConfigField("String", "ENV_NAME", "\"SIT\"")
+        }
+        create("dev") {
+            dimension = "env"
+            buildConfigField("String", "SERVER_HOST", "\"http://100.69.213.116:5174\"")
+            buildConfigField("String", "ENV_NAME", "\"DEV\"")
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
