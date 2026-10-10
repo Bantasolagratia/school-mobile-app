@@ -610,7 +610,7 @@ fun StudentExamHistoryScreen(
 
                                     // Pertanyaan
                                     Text(
-                                        text = q.pertanyaan ?: "",
+                                        text = formatMathForMobile(q.pertanyaan ?: ""),
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = DarkNavy
@@ -636,7 +636,7 @@ fun StudentExamHistoryScreen(
                                                 color = if (q.isCorrect) Color(0xFF166534) else Color(0xFF991B1B)
                                             )
                                             Text(
-                                                text = q.studentAnswer?.takeIf { it.isNotBlank() } ?: "(Tidak dijawab)",
+                                                text = q.studentAnswer?.takeIf { it.isNotBlank() }?.let { formatMathForMobile(it) } ?: "(Tidak dijawab)",
                                                 fontSize = 12.sp,
                                                 color = DarkNavy
                                             )
@@ -660,7 +660,7 @@ fun StudentExamHistoryScreen(
                                                     color = PrimaryTeal
                                                 )
                                                 Text(
-                                                    text = q.correctAnswer ?: "",
+                                                    text = formatMathForMobile(q.correctAnswer ?: ""),
                                                     fontSize = 12.sp,
                                                     fontWeight = FontWeight.SemiBold,
                                                     color = DarkNavy
