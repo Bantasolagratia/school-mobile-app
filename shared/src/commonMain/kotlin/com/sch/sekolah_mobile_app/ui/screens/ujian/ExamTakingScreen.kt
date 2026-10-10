@@ -583,7 +583,7 @@ fun ExamTakingScreen(
                                         !q.pertanyaan.isNullOrBlank() -> q.pertanyaan
                                         else -> "Perhatikan lampiran gambar di atas untuk menjawab soal ini."
                                     }
-                                    val formattedPertanyaan = rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____")
+                                    val formattedPertanyaan = formatMathForMobile(rawPertanyaan.replace(Regex("#blank#?", RegexOption.IGNORE_CASE), "_____"))
 
                                     Text(
                                         text = formattedPertanyaan,
@@ -644,7 +644,7 @@ fun ExamTakingScreen(
                                                 }
                                                 Spacer(modifier = Modifier.width(12.dp))
                                                 Text(
-                                                    text = optText,
+                                                    text = formatMathForMobile(optText),
                                                     fontSize = 14.sp,
                                                     color = DarkNavy
                                                 )
