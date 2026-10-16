@@ -1,20 +1,38 @@
 package com.sch.sekolah_mobile_app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.ExamScheduleItem
 import com.sch.sekolah_mobile_app.data.model.Jadwal
 import com.sch.sekolah_mobile_app.data.model.MateriItem
+import com.sch.sekolah_mobile_app.data.model.NotificationItemMobile
 import com.sch.sekolah_mobile_app.data.model.StudentMataPelajaranItem
 import com.sch.sekolah_mobile_app.data.model.SuratIzinItemMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
@@ -29,33 +47,41 @@ import com.sch.sekolah_mobile_app.data.repository.NotificationRepository
 import com.sch.sekolah_mobile_app.data.repository.RaportRepository
 import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
+import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
+import com.sch.sekolah_mobile_app.data.storage.showSystemNotification
+import com.sch.sekolah_mobile_app.ui.screens.activation.ActivationScreen
 import com.sch.sekolah_mobile_app.ui.screens.calendar.CalendarScreen
-import com.sch.sekolah_mobile_app.ui.screens.version.ForceUpdateScreen
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
 import com.sch.sekolah_mobile_app.ui.screens.home.HomeScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.CreateIzinScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.IzinDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.izin.StudentIzinListScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.StudentQrScannerScreen
-import com.sch.sekolah_mobile_app.ui.screens.activation.ActivationScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherJadwalScreen
 import com.sch.sekolah_mobile_app.ui.screens.jadwal.TeacherQrKioskScreen
 import com.sch.sekolah_mobile_app.ui.screens.login.LoginScreen
-import com.sch.sekolah_mobile_app.ui.screens.register.RegisterScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.MateriDetailScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMapelScreen
 import com.sch.sekolah_mobile_app.ui.screens.mapel.StudentMateriListScreen
 import com.sch.sekolah_mobile_app.ui.screens.notifications.NotificationsScreen
 import com.sch.sekolah_mobile_app.ui.screens.profile.ProfileScreen
 import com.sch.sekolah_mobile_app.ui.screens.raport.RaportScreen
+import com.sch.sekolah_mobile_app.ui.screens.register.RegisterScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.StudentExamHistoryScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
-import androidx.compose.foundation.BorderStroke
+import com.sch.sekolah_mobile_app.ui.screens.version.ForceUpdateScreen
 import com.sch.sekolah_mobile_app.ui.theme.BorderStrokeColor
+import com.sch.sekolah_mobile_app.ui.theme.CardSurface
+import com.sch.sekolah_mobile_app.ui.theme.DarkNavy
 import com.sch.sekolah_mobile_app.ui.theme.LightBackground
 import com.sch.sekolah_mobile_app.ui.theme.PrimaryTeal
+import com.sch.sekolah_mobile_app.ui.theme.PrimaryTealContainer
 import com.sch.sekolah_mobile_app.ui.theme.SekolahMobileTheme
+import com.sch.sekolah_mobile_app.ui.theme.SlateGray
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 enum class ScreenState {
     LOGIN,
@@ -135,15 +161,51 @@ fun App() {
     var selectedIzin by remember { mutableStateOf<SuratIzinItemMobile?>(null) }
     var kioskReturnSubScreen by remember { mutableStateOf(SubScreen.NONE) }
     var unreadNotifCount by remember { mutableStateOf(0L) }
+    var activePopupNotification by remember { mutableStateOf<NotificationItemMobile?>(null) }
+    val platformStorage = remember { getPlatformStorage() }
 
-    // Sync remote config, SSE, dan hitung notifikasi saat user terautentikasi
-    LaunchedEffect(authRepository.getAccessToken()) {
+    // Sync remote config, SSE, dan polling real-time notifikasi pop-up saat user terautentikasi
+    LaunchedEffect(screenState, currentProfile?.username) {
         val token = authRepository.getAccessToken()
         AppLifecycleObserver.onAppForeground(token)
-        if (!token.isNullOrBlank()) {
-            try {
-                unreadNotifCount = notificationRepository.getUnreadCount()
-            } catch (_: Exception) {}
+        if (!token.isNullOrBlank() && screenState == ScreenState.MAIN) {
+            val userKey = currentProfile?.username ?: "default"
+            val storageKey = "seen_notif_ids_$userKey"
+            while (isActive) {
+                try {
+                    val unreadList = notificationRepository.getNotifications(unreadOnly = true)
+                    unreadNotifCount = unreadList.size.toLong()
+
+                    val seenRaw = platformStorage.getString(storageKey, "") ?: ""
+                    val seenSet = seenRaw.split(",")
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                        .toMutableSet()
+
+                    val newUnreadItems = unreadList.filter { it.id.isNotBlank() && !seenSet.contains(it.id) }
+                    if (newUnreadItems.isNotEmpty()) {
+                        newUnreadItems.forEach { item ->
+                            seenSet.add(item.id)
+                            showSystemNotification(item.id, item.title, item.message)
+                        }
+                        // Batasi ukuran histori ID di storage agar tetap ringan
+                        val compactSeen = seenSet.toList().takeLast(150).joinToString(",")
+                        platformStorage.setString(storageKey, compactSeen)
+
+                        // Tampilkan pop-up banner in-app untuk notifikasi terbaru
+                        activePopupNotification = newUnreadItems.first()
+                    }
+                } catch (_: Exception) {}
+                delay(8_000L)
+            }
+        }
+    }
+
+    // Otomatis tutup pop-up in-app setelah 6 detik
+    LaunchedEffect(activePopupNotification?.id) {
+        if (activePopupNotification != null) {
+            delay(6_000L)
+            activePopupNotification = null
         }
     }
 
@@ -171,6 +233,7 @@ fun App() {
             selectedMateriId = null
             selectedJadwal = null
             unreadNotifCount = 0L
+            activePopupNotification = null
             currentSubScreen = SubScreen.NONE
             currentTab = NavigationTab.HOME
             screenState = ScreenState.LOGIN
@@ -198,6 +261,7 @@ fun App() {
                     modifier = Modifier.fillMaxSize(),
                     color = LightBackground
                 ) {
+                Box(modifier = Modifier.fillMaxSize()) {
             when (screenState) {
                 ScreenState.LOGIN -> {
                     LoginScreen(
@@ -616,10 +680,94 @@ fun App() {
                     }
                 }
             }
+
+            // Floating In-App Notification Pop-Up Banner (Heads-Up)
+            AnimatedVisibility(
+                visible = activePopupNotification != null && screenState == ScreenState.MAIN,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                activePopupNotification?.let { notif ->
+                    Card(
+                        modifier = Modifier
+                            .widthIn(max = 520.dp)
+                            .fillMaxWidth()
+                            .clickable {
+                                activePopupNotification = null
+                                currentSubScreen = SubScreen.NOTIFICATIONS
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = CardSurface),
+                        border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.35f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(PrimaryTealContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.NotificationsActive,
+                                    contentDescription = "Notifikasi Baru",
+                                    tint = PrimaryTeal,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = notif.title,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DarkNavy,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = notif.message,
+                                    fontSize = 12.sp,
+                                    color = SlateGray,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    lineHeight = 16.sp
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { activePopupNotification = null },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Tutup",
+                                    tint = SlateGray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+                }
+                }
+            }
         }
     }
-}
-}
 }
 
 @Composable
