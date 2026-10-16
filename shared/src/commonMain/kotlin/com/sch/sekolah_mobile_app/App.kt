@@ -597,6 +597,7 @@ fun App() {
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
                                                 onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
+                                                onProfileUpdated = { currentProfile = it },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
@@ -667,6 +668,7 @@ fun App() {
                                                 onNavigateToNotifications = { currentSubScreen = SubScreen.NOTIFICATIONS },
                                                 onNavigateToIzin = { currentSubScreen = SubScreen.IZIN_LIST },
                                                 unreadNotifCount = unreadNotifCount,
+                                                onProfileUpdated = { currentProfile = it },
                                                 onLogout = {
                                                     currentProfile = null
                                                     screenState = ScreenState.LOGIN
@@ -789,6 +791,7 @@ private fun MainContent(
     onNavigateToNotifications: () -> Unit,
     onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long,
+    onProfileUpdated: (UserProfileResponse) -> Unit = {},
     onLogout: () -> Unit
 ) {
     when (tab) {
@@ -805,7 +808,8 @@ private fun MainContent(
                 onNavigateToNotifications = onNavigateToNotifications,
                 onNavigateToIzin = onNavigateToIzin,
                 unreadNotifCount = unreadNotifCount,
-                ujianRepository = ujianRepository
+                ujianRepository = ujianRepository,
+                authRepository = authRepository
             )
         }
         NavigationTab.GURU -> {
@@ -827,6 +831,7 @@ private fun MainContent(
             ProfileScreen(
                 authRepository = authRepository,
                 profile = profile,
+                onProfileUpdated = onProfileUpdated,
                 onLogout = onLogout
             )
         }

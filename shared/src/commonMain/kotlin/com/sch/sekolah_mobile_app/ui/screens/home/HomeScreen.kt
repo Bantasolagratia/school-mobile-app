@@ -37,6 +37,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import com.sch.sekolah_mobile_app.data.repository.AuthRepository
+import org.jetbrains.compose.resources.decodeToImageBitmap
+
 @Composable
 fun HomeScreen(
     profile: UserProfileResponse?,
@@ -50,7 +56,8 @@ fun HomeScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToIzin: () -> Unit = {},
     unreadNotifCount: Long = 0,
-    ujianRepository: UjianRepository? = null
+    ujianRepository: UjianRepository? = null,
+    authRepository: AuthRepository? = null
 ) {
     val platformStorage = remember { getPlatformStorage() }
     var isSensitiveInfoMasked by remember {
@@ -62,6 +69,23 @@ fun HomeScreen(
     val displayDetail = profile?.displayDetail ?: if (isGuru) "Dewan Guru" else "Kelas 10-B"
     val nis = profile?.nis ?: "202610012"
     val nip = profile?.nip ?: "-"
+    val fotoUrl = profile?.fotoUrl
+    var headerAvatarBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(fotoUrl) {
+        if (!fotoUrl.isNullOrBlank() && authRepository != null) {
+            try {
+                val bytes = authRepository.apiClient.fetchImageBytes(fotoUrl, authRepository.getAccessToken())
+                if (bytes.isNotEmpty()) {
+                    headerAvatarBitmap = bytes.decodeToImageBitmap()
+                }
+            } catch (_: Exception) {
+                headerAvatarBitmap = null
+            }
+        } else {
+            headerAvatarBitmap = null
+        }
+    }
 
     // State Kartu Ujian (Flip Card)
     var isCardFlipped by remember { mutableStateOf(false) }
@@ -149,12 +173,22 @@ fun HomeScreen(
                         shadowElevation = 1.dp
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isGuru) Icons.Default.PersonOutline else Icons.Default.School,
-                                contentDescription = null,
-                                tint = PrimaryTealDark,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            val bmp = headerAvatarBitmap
+                            if (bmp != null) {
+                                Image(
+                                    bitmap = bmp,
+                                    contentDescription = "Foto Profil $displayName",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp))
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = if (isGuru) Icons.Default.PersonOutline else Icons.Default.School,
+                                    contentDescription = null,
+                                    tint = PrimaryTealDark,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                 }
