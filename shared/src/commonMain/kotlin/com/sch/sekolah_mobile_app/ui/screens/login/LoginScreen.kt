@@ -211,28 +211,6 @@ fun LoginScreen(
                         )
                     }
                 }
-
-                // Register Navigation Link
-                Spacer(modifier = Modifier.height(18.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Belum memiliki akun?",
-                        fontSize = 13.sp,
-                        color = SlateGray
-                    )
-                    TextButton(onClick = onNavigateToRegister) {
-                        Text(
-                            text = "Daftar / Aktivasi di sini",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PrimaryTeal
-                        )
-                    }
-                }
             }
         }
     }
