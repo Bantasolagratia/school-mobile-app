@@ -231,6 +231,24 @@ class AuthRepository(
         _sessionTerminationFlow.tryEmit(reason)
     }
 
+    suspend fun refreshProfile(): UserProfileResponse {
+        val token = getAccessToken() ?: throw IllegalStateException("Sesi Anda tidak ditemukan. Silakan masuk kembali.")
+        val updatedProfile = apiClient.fetchProfile(token)
+        cachedProfile = updatedProfile
+        try {
+            val jsonStr = apiClient.json.encodeToString(updatedProfile)
+            storage.setString(KEY_PROFILE_JSON, jsonStr)
+        } catch (_: Exception) {}
+        return updatedProfile
+    }
+
+    suspend fun uploadStudentPhoto(nis: String, file: SelectedFile): Pair<PhotoUploadResponse, UserProfileResponse> {
+        val token = getAccessToken() ?: throw IllegalStateException("Sesi Anda tidak ditemukan. Silakan masuk kembali.")
+        val res = apiClient.uploadMuridPhoto(token, nis, file)
+        val updatedProfile = refreshProfile()
+        return res to updatedProfile
+    }
+
     fun logout() {
         purgeSessionAndMemory("Logout manual oleh pengguna")
     }

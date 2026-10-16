@@ -1,11 +1,15 @@
 package com.sch.sekolah_mobile_app.ui.screens.izin
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.sch.sekolah_mobile_app.data.model.SelectedFile
+import java.io.ByteArrayOutputStream
+import kotlin.math.max
 
 @Composable
 actual fun rememberPlatformFilePicker(
@@ -46,18 +50,18 @@ actual fun rememberPlatformFilePicker(
                     return@rememberLauncherForActivityResult
                 }
 
-                if (size > 10 * 1024 * 1024) {
-                    onError("Ukuran file terlalu besar (maksimal 10 MB).")
+                if (size > 20 * 1024 * 1024) {
+                    onError("Ukuran file terlalu besar (maksimal 20 MB).")
                     return@rememberLauncherForActivityResult
                 }
 
-                val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                if (bytes == null || bytes.isEmpty()) {
+                val rawBytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (rawBytes == null || rawBytes.isEmpty()) {
                     onError("Gagal membaca isi file.")
                     return@rememberLauncherForActivityResult
                 }
 
-                val effectiveMime = if (mimeType != "application/octet-stream") mimeType else {
+                var effectiveMime = if (mimeType != "application/octet-stream") mimeType else {
                     when {
                         lowerName.endsWith(".pdf") -> "application/pdf"
                         lowerName.endsWith(".png") -> "image/png"
@@ -66,12 +70,45 @@ actual fun rememberPlatformFilePicker(
                     }
                 }
 
+                var finalBytes = rawBytes
+                var finalName = displayName
+
+                // Kompres otomatis gambar yang berukuran > 500 KB agar unggahan ringan dan bebas HTTP 413
+                if (effectiveMime.startsWith("image/") && rawBytes.size > 500 * 1024) {
+                    try {
+                        val decoded = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                        if (decoded != null) {
+                            val maxDim = 1280
+                            val w = decoded.width
+                            val h = decoded.height
+                            val longest = max(w, h)
+                            val scaled = if (longest > maxDim) {
+                                val ratio = maxDim.toFloat() / longest.toFloat()
+                                val targetW = (w * ratio).toInt().coerceAtLeast(1)
+                                val targetH = (h * ratio).toInt().coerceAtLeast(1)
+                                Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
+                            } else {
+                                decoded
+                            }
+                            val baos = ByteArrayOutputStream()
+                            scaled.compress(Bitmap.CompressFormat.JPEG, 82, baos)
+                            val compressedBytes = baos.toByteArray()
+                            if (compressedBytes.isNotEmpty() && compressedBytes.size < rawBytes.size) {
+                                finalBytes = compressedBytes
+                                effectiveMime = "image/jpeg"
+                                val baseName = displayName.substringBeforeLast('.', displayName)
+                                finalName = "$baseName.jpg"
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+
                 onFileSelected(
                     SelectedFile(
-                        name = displayName,
+                        name = finalName,
                         mimeType = effectiveMime,
-                        bytes = bytes,
-                        sizeBytes = bytes.size.toLong()
+                        bytes = finalBytes,
+                        sizeBytes = finalBytes.size.toLong()
                     )
                 )
             } catch (e: Exception) {

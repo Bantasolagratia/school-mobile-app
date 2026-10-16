@@ -152,4 +152,7 @@ object ApiConfig {
         return if (n != null) "${getBaseUrl()}/api/ujian/room-allocation/my-card?nis=$n"
         else "${getBaseUrl()}/api/ujian/room-allocation/my-card"
     }
+
+    fun getMuridPhotoUrl(nis: String): String =
+        "${getBaseUrl()}/api/murid/$nis/foto"
 }
