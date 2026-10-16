@@ -134,7 +134,20 @@ data class UserProfileResponse(
 
     val nip: String
         get() = teacherIdentity?.id ?: "-"
+
+    val fotoUrl: String?
+        get() = studentIdentity?.fotoUrl?.takeIf { it.isNotBlank() }
+            ?: teacherIdentity?.fotoUrl?.takeIf { it.isNotBlank() }
 }
+
+@Serializable
+data class PhotoUploadResponse(
+    val status: String? = null,
+    val requiresApproval: Boolean = false,
+    val fotoUrl: String? = null,
+    val pendingPreviewUrl: String? = null,
+    val message: String? = null
+)
 
 @Serializable
 data class Guru(
