@@ -30,6 +30,10 @@ kotlin {
         }
     }
 
+    sourceSets.all {
+        languageSettings.optIn("org.jetbrains.compose.resources.ExperimentalResourceApi")
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)

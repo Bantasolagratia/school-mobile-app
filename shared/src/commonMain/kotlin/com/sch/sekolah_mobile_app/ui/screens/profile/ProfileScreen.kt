@@ -1,3 +1,5 @@
+@file:OptIn(org.jetbrains.compose.resources.ExperimentalResourceApi::class)
+
 package com.sch.sekolah_mobile_app.ui.screens.profile
 
 import androidx.compose.foundation.BorderStroke
