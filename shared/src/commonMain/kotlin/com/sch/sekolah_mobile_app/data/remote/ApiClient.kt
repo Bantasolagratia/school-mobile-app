@@ -878,6 +878,36 @@ class ApiClient(
             throw Exception(message)
         }
     }
+
+    suspend fun uploadMuridPhoto(
+        token: String,
+        nis: String,
+        file: SelectedFile
+    ): PhotoUploadResponse {
+        val url = ApiConfig.getMuridPhotoUrl(nis.trim())
+        val response = httpClient.submitFormWithBinaryData(
+            url = url,
+            formData = formData {
+                append("file", file.bytes, Headers.build {
+                    append(HttpHeaders.ContentType, file.mimeType)
+                    append(HttpHeaders.ContentDisposition, "filename=\"${file.name}\"")
+                })
+            }
+        ) {
+            header("Authorization", "Bearer $token")
+        }
+
+        if (!response.status.isSuccess()) {
+            val responseText = response.bodyAsText()
+            var message = "Gagal mengunggah foto profil (${response.status.value})"
+            try {
+                val jsonTree = json.parseToJsonElement(responseText).jsonObject
+                message = jsonTree["message"]?.jsonPrimitive?.content ?: message
+            } catch (_: Exception) {}
+            throw Exception(message)
+        }
+        return response.body()
+    }
 }
 
 
