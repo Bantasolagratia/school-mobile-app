@@ -65,3 +65,59 @@ actual fun copyToClipboard(label: String, text: String) {
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
 }
 
+actual fun showSystemNotification(id: String, title: String, message: String) {
+    try {
+        val context = AndroidPlatformContext.get()
+        val channelId = "sekolah_alerts_high_v1"
+        val notificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val existing = notificationManager.getNotificationChannel(channelId)
+            if (existing == null) {
+                val channel = android.app.NotificationChannel(
+                    channelId,
+                    "Notifikasi Akademik & Sekolah",
+                    android.app.NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Notifikasi pop-up pengumuman, absensi, jadwal, dan ujian"
+                    enableVibration(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+        }
+
+        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val pendingIntent = if (launchIntent != null) {
+            android.app.PendingIntent.getActivity(
+                context,
+                id.hashCode(),
+                launchIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+        } else null
+
+        val smallIconRes = if (context.applicationInfo.icon != 0) {
+            context.applicationInfo.icon
+        } else {
+            android.R.drawable.ic_dialog_info
+        }
+
+        val builder = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(smallIconRes)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(androidx.core.app.NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+            .setAutoCancel(true)
+
+        if (pendingIntent != null) {
+            builder.setContentIntent(pendingIntent)
+        }
+
+        notificationManager.notify(id.hashCode(), builder.build())
+    } catch (_: Exception) {
+    }
+}
+
