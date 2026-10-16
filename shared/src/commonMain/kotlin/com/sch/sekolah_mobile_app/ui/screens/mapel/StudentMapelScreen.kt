@@ -156,7 +156,7 @@ fun StudentMapelScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Akses modul, bahan bacaan, dan materi guru yang di-assign ke kelasmu.",
+                            text = "Akses modul belajar dan materi pelajaran untuk kelasmu.",
                             fontSize = 12.sp,
                             color = Color.White.copy(alpha = 0.85f),
                             lineHeight = 16.sp

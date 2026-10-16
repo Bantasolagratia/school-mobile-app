@@ -754,11 +754,11 @@ fun HomeScreen(
                         icon = Icons.AutoMirrored.Filled.MenuBook,
                         iconBgColor = Color(0xFFE0F2FE),
                         iconTint = Color(0xFF0284C7),
-                        badgeText = "Bahan Ajar",
+                        badgeText = "Materi Belajar",
                         badgeColor = Color(0xFFE0F2FE),
                         badgeTextColor = Color(0xFF0369A1),
                         title = "Mata Pelajaran",
-                        subtitle = "Modul & materi bacaan",
+                        subtitle = "Modul & materi belajar",
                         onClick = onNavigateToMapel
                     )
                     BentoActionTile(

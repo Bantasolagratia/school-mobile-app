@@ -269,7 +269,7 @@ fun MateriDetailScreen(
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
-                                            text = "Bahan Bacaan",
+                                            text = "Materi Belajar",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium,
                                             color = DarkNavy
