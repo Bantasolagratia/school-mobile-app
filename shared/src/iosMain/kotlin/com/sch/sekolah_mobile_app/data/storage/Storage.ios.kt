@@ -35,3 +35,29 @@ actual fun copyToClipboard(label: String, text: String) {
     UIPasteboard.generalPasteboard.string = text
 }
 
+actual fun showSystemNotification(id: String, title: String, message: String) {
+    try {
+        val center = platform.UserNotifications.UNUserNotificationCenter.currentNotificationCenter()
+        center.requestAuthorizationWithOptions(
+            platform.UserNotifications.UNAuthorizationOptionAlert or
+                platform.UserNotifications.UNAuthorizationOptionSound or
+                platform.UserNotifications.UNAuthorizationOptionBadge
+        ) { granted, _ ->
+            if (granted) {
+                val content = platform.UserNotifications.UNMutableNotificationContent().apply {
+                    setTitle(title)
+                    setBody(message)
+                    setSound(platform.UserNotifications.UNNotificationSound.defaultSound())
+                }
+                val request = platform.UserNotifications.UNNotificationRequest.requestWithIdentifier(
+                    identifier = id,
+                    content = content,
+                    trigger = null
+                )
+                center.addNotificationRequest(request, withCompletionHandler = null)
+            }
+        }
+    } catch (_: Exception) {
+    }
+}
+
