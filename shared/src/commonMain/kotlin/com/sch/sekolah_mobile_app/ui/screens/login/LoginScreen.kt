@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sch.sekolah_mobile_app.data.remote.ApiConfig
 import com.sch.sekolah_mobile_app.data.repository.AuthRepository
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -46,7 +47,9 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun performLogin() {
-        if (username.isBlank() || password.isBlank()) {
+        val cleanUsername = username.trim()
+        val cleanPassword = password.trim()
+        if (cleanUsername.isBlank() || cleanPassword.isBlank()) {
             errorMessage = "Username dan password wajib diisi."
             return
         }
@@ -54,7 +57,7 @@ fun LoginScreen(
         errorMessage = null
         coroutineScope.launch {
             try {
-                authRepository.login(username, password)
+                authRepository.login(cleanUsername, cleanPassword)
                 isLoading = false
                 onLoginSuccess()
             } catch (e: Exception) {
@@ -117,7 +120,29 @@ fun LoginScreen(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                val baseUrl = remember { ApiConfig.getBaseUrl() }
+                val isSit = baseUrl.contains("taile61966.ts.net")
+                val envLabel = if (isSit) "SIT" else "DEV"
+                val envBadgeBg = if (isSit) Color(0xFFDCFCE7) else Color(0xFFFEF3C7)
+                val envBadgeText = if (isSit) Color(0xFF15803D) else Color(0xFFB45309)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(envBadgeBg)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "ENV: $envLabel",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = envBadgeText
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Error Banner
                 if (errorMessage != null) {
