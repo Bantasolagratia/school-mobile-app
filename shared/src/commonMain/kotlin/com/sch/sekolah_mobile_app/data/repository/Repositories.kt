@@ -75,7 +75,7 @@ class AuthRepository(
     fun getRefreshToken(): String? = cachedRefreshToken
 
     suspend fun login(usernameOrEmail: String, pass: String): UserProfileResponse {
-        val session = apiClient.login(usernameOrEmail.trim(), pass)
+        val session = apiClient.login(usernameOrEmail.trim(), pass.trim())
         val token = session.accessToken
         cachedToken = token
         cachedRefreshToken = session.refreshToken
