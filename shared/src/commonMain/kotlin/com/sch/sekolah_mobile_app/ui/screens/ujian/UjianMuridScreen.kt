@@ -244,11 +244,10 @@ fun UjianMuridScreen(
                             val (canStartB, badgeB, _) = evaluateExamTiming(b)
 
                             fun getRank(canStart: Boolean, badge: String): Int {
-                                if (badge.contains("Dikerjakan") || badge.contains("Sudah") || badge.contains("Berakhir") || badge.contains("Selesai")) return 5
-                                if (badge.contains("Habis")) return 4
+                                if (badge.contains("Sudah Dikerjakan") || badge.contains("Sudah Dikumpulkan") || badge.contains("Berakhir") || badge.contains("Dianulir (Selesai)")) return 5
+                                if (badge.contains("Waktu Habis") || badge.contains("Habis")) return 4
                                 if (badge.contains("Mengerjakan") || badge.contains("Dianulir (Ujian Ulang)")) return 1
-                                if (badge.contains("Terkunci") || badge.contains("Belum Mengumpulkan")) return 2
-                                if (canStart) return 2
+                                if (canStart || badge.contains("Terkunci") || badge.contains("Belum Mengumpulkan")) return 2
                                 return 3
                             }
 
@@ -258,12 +257,14 @@ fun UjianMuridScreen(
                             if (rankA != rankB) {
                                 rankA.compareTo(rankB)
                             } else {
-                                val dateA = a.waktuMulai ?: "${a.tanggal ?: ""} ${a.jamMulai ?: ""}"
-                                val dateB = b.waktuMulai ?: "${b.tanggal ?: ""} ${b.jamMulai ?: ""}"
+                                val dateA = a.waktuMulai ?: "${a.tanggal ?: ""}T${a.jamMulai ?: "00:00"}"
+                                val dateB = b.waktuMulai ?: "${b.tanggal ?: ""}T${b.jamMulai ?: "00:00"}"
                                 if (rankA < 4) {
-                                    dateA.compareTo(dateB)
+                                    val cmp = dateA.compareTo(dateB)
+                                    if (cmp != 0) cmp else (a.id ?: "").compareTo(b.id ?: "")
                                 } else {
-                                    dateB.compareTo(dateA)
+                                    val cmp = dateB.compareTo(dateA)
+                                    if (cmp != 0) cmp else (b.id ?: "").compareTo(a.id ?: "")
                                 }
                             }
                         }
