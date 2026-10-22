@@ -77,13 +77,13 @@ fun ExamTakingScreen(
     val examDate = exam.tanggal?.takeIf { it.isNotBlank() } ?: todayStr
 
     val scheduleStartStr = remember(exam) {
-        if (!exam.waktuMulai.isNullOrBlank()) exam.waktuMulai
-        else if (!exam.jamMulai.isNullOrBlank()) "$examDate ${exam.jamMulai}"
+        if (!exam.jamMulai.isNullOrBlank()) "$examDate ${exam.jamMulai}"
+        else if (!exam.waktuMulai.isNullOrBlank()) exam.waktuMulai
         else null
     }
     val scheduleEndStr = remember(exam) {
-        if (!exam.waktuSelesai.isNullOrBlank()) exam.waktuSelesai
-        else if (!exam.jamSelesai.isNullOrBlank()) "$examDate ${exam.jamSelesai}"
+        if (!exam.jamSelesai.isNullOrBlank()) "$examDate ${exam.jamSelesai}"
+        else if (!exam.waktuSelesai.isNullOrBlank()) exam.waktuSelesai
         else null
     }
 
