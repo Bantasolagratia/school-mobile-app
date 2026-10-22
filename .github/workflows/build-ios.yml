@@ -26,6 +26,7 @@ jobs:
 
       - name: Build iOS Archive (Unsigned)
         run: |
+          export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx5120m"
           xcodebuild clean archive \
             -project iosApp/iosApp.xcodeproj \
             -scheme iosApp \
