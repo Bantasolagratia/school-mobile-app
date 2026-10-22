@@ -1,16 +1,13 @@
 package com.sch.sekolah_mobile_app.ui.screens.ujian
 
-import platform.Foundation.NSDate
-import platform.Foundation.NSDateFormatter
-import platform.Foundation.NSISO8601DateFormatter
-import platform.Foundation.NSTimeZone
-import platform.Foundation.timeZoneWithName
+import platform.Foundation.*
+import platform.Foundation.timeIntervalSince1970
 
 actual fun getCurrentWibDateTime(): Pair<String, String> {
     return try {
         val date = NSDate()
         val formatter = NSDateFormatter()
-        formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+        formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
         formatter.dateFormat = "yyyy-MM-dd"
         val dateStr = formatter.stringFromDate(date)
         formatter.dateFormat = "HH:mm"
@@ -42,7 +39,7 @@ actual fun extractScheduleDate(dateTimeStr: String?): String? {
             val isoFormatter = NSISO8601DateFormatter()
             val date = isoFormatter.dateFromString(clean) ?: return clean.substringBefore("T")
             val wibFormatter = NSDateFormatter()
-            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
             wibFormatter.dateFormat = "yyyy-MM-dd"
             wibFormatter.stringFromDate(date)
         } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
@@ -63,7 +60,7 @@ actual fun formatScheduleTime(timeStr: String?): String {
             val isoFormatter = NSISO8601DateFormatter()
             val date = isoFormatter.dateFromString(clean) ?: return clean.substringAfter("T").take(5)
             val wibFormatter = NSDateFormatter()
-            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
             wibFormatter.dateFormat = "HH:mm"
             wibFormatter.stringFromDate(date)
         } else {
@@ -78,7 +75,7 @@ actual fun formatEpochMillisToTime(epochMillis: Long): String {
     return try {
         val date = NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0)
         val wibFormatter = NSDateFormatter()
-        wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+        wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
         wibFormatter.dateFormat = "HH:mm"
         wibFormatter.stringFromDate(date)
     } catch (_: Exception) {
@@ -97,7 +94,7 @@ actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
                 return (date.timeIntervalSince1970 * 1000.0).toLong()
             }
             val wibFormatter = NSDateFormatter()
-            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
             wibFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
             val cleanNoZ = clean.substringBefore("Z").substringBefore("+")
             val fallbackDate = wibFormatter.dateFromString(cleanNoZ)
@@ -106,7 +103,7 @@ actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
             }
         }
         val formatter = NSDateFormatter()
-        formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+        formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta") ?: NSTimeZone.defaultTimeZone
         if (clean.contains(" ")) {
             val parts = clean.split(" ")
             val datePart = parts[0]
@@ -129,4 +126,3 @@ actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
         null
     }
 }
-
