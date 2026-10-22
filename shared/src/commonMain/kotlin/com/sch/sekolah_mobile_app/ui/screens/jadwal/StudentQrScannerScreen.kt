@@ -41,8 +41,6 @@ fun StudentQrScannerScreen(
     var scanResult by remember { mutableStateOf<AbsensiResultMobile?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var showManualInputDialog by remember { mutableStateOf(false) }
-    var manualTokenInput by remember { mutableStateOf("") }
 
     // Laser scanning line animation
     val infiniteTransition = rememberInfiniteTransition()
@@ -99,12 +97,6 @@ fun StudentQrScannerScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
-                    }
-                },
-                actions = {
-                    // Manual Token Input helper (Strictly NO photo gallery picker!)
-                    IconButton(onClick = { showManualInputDialog = true }) {
-                        Icon(Icons.Default.Keyboard, contentDescription = "Input Kode Manual", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0F172A))
@@ -338,50 +330,6 @@ fun StudentQrScannerScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Selesai")
-                }
-            }
-        )
-    }
-
-    // Manual Input Dialog (For fallback testing in emulator without camera)
-    if (showManualInputDialog) {
-        AlertDialog(
-            onDismissRequest = { showManualInputDialog = false },
-            title = {
-                Text("Input Token Presensi Manual", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        "Masukkan kode token presensi jika kamera perangkat Anda mengalami kendala:",
-                        fontSize = 12.sp,
-                        color = SlateGray
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = manualTokenInput,
-                        onValueChange = { manualTokenInput = it },
-                        label = { Text("Kode Token") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = false,
-                        maxLines = 3
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showManualInputDialog = false
-                        submitScan(manualTokenInput)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
-                ) {
-                    Text("Verifikasi Presensi")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showManualInputDialog = false }) {
-                    Text("Batal")
                 }
             }
         )
