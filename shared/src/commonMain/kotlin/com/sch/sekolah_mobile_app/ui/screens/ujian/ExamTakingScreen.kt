@@ -39,9 +39,12 @@ import com.sch.sekolah_mobile_app.data.model.UjianDetailMobile
 import com.sch.sekolah_mobile_app.data.model.UjianQuestionMobile
 import com.sch.sekolah_mobile_app.data.model.UserProfileResponse
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
+import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 @Composable
 fun ExamTakingScreen(
@@ -61,6 +64,67 @@ fun ExamTakingScreen(
         showBackBlockedDialog = true
     }
 
+    // Storage & Session Persistence
+    val storage = remember { getPlatformStorage() }
+    val studentId = profile?.nis?.takeIf { it.isNotBlank() } ?: profile?.username?.takeIf { it.isNotBlank() } ?: "student"
+    val examKeyId = exam.id ?: exam.ujianId ?: "unknown_exam"
+    val startKey = "exam_start_time_${examKeyId}_${studentId}"
+    val answersKey = "exam_answers_${examKeyId}_${studentId}"
+    val flaggedKey = "exam_flagged_${examKeyId}_${studentId}"
+
+    // Schedule start & end epoch millis
+    val (todayStr, _) = remember { getCurrentWibDateTime() }
+    val examDate = exam.tanggal?.takeIf { it.isNotBlank() } ?: todayStr
+
+    val scheduleStartStr = remember(exam) {
+        if (!exam.jamMulai.isNullOrBlank()) "$examDate ${exam.jamMulai}"
+        else if (!exam.waktuMulai.isNullOrBlank()) exam.waktuMulai
+        else null
+    }
+    val scheduleEndStr = remember(exam) {
+        if (!exam.jamSelesai.isNullOrBlank()) "$examDate ${exam.jamSelesai}"
+        else if (!exam.waktuSelesai.isNullOrBlank()) exam.waktuSelesai
+        else null
+    }
+
+    val scheduleStartMillis = remember(scheduleStartStr) { parseScheduleToEpochMillis(scheduleStartStr) }
+    val scheduleEndMillis = remember(scheduleEndStr) { parseScheduleToEpochMillis(scheduleEndStr) }
+
+    // Scheduled duration: if both start & end exist and end > start, use the difference. Otherwise fallback to 90 mins.
+    val totalDurationSeconds = remember(scheduleStartMillis, scheduleEndMillis) {
+        if (scheduleStartMillis != null && scheduleEndMillis != null && scheduleEndMillis > scheduleStartMillis) {
+            (scheduleEndMillis - scheduleStartMillis) / 1000L
+        } else {
+            90 * 60L
+        }
+    }
+
+    // Student start epoch millis (persisted in local storage)
+    val studentStartMillis = remember {
+        val now = getCurrentEpochMillis()
+        val saved = storage.getString(startKey)?.toLongOrNull()
+        if (saved != null && saved > 0L) {
+            saved
+        } else {
+            storage.setString(startKey, now.toString())
+            now
+        }
+    }
+
+    // Individual deadline bounded by total exam duration
+    val studentDeadlineMillis = remember(studentStartMillis, totalDurationSeconds) {
+        studentStartMillis + (totalDurationSeconds * 1000L)
+    }
+
+    // Effective deadline bounded by schedule end time: the timer can NEVER exceed the scheduled end time!
+    val effectiveDeadlineMillis = remember(studentDeadlineMillis, scheduleEndMillis) {
+        if (scheduleEndMillis != null) {
+            minOf(studentDeadlineMillis, scheduleEndMillis)
+        } else {
+            studentDeadlineMillis
+        }
+    }
+
     // Fasilitas 7.1 & 7.2: Kiosk Lock & App Switching Violation Detection
     var violationCount by remember { mutableStateOf(0) }
     var showViolationDialog by remember { mutableStateOf(false) }
@@ -69,13 +133,73 @@ fun ExamTakingScreen(
     var isVerifyingViolationKey by remember { mutableStateOf(false) }
     var violationKeyError by remember { mutableStateOf<String?>(null) }
 
-    // Exam Questions & State
+    // Exam Questions & State with local persistence restoration
     var examDetail by remember { mutableStateOf<UjianDetailMobile?>(null) }
     var questions by remember { mutableStateOf<List<UjianQuestionMobile>>(emptyList()) }
     var currentIndex by remember { mutableStateOf(0) }
-    var studentAnswers by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var flaggedQuestions by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var studentAnswers by remember {
+        val initial = mutableMapOf<Int, String>()
+        val signedVault = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.loadSignedProgress(
+            storage = storage,
+            scheduleId = examKeyId,
+            studentId = studentId
+        )
+        if (signedVault != null) {
+            signedVault.answersByIndex.forEach { (k, v) ->
+                k.toIntOrNull()?.let { initial[it] = v }
+            }
+        }
+        mutableStateOf<Map<Int, String>>(initial)
+    }
+    var flaggedQuestions by remember {
+        val initial = mutableSetOf<Int>()
+        val saved = storage.getString(flaggedKey)
+        if (!saved.isNullOrBlank()) {
+            try {
+                val list = Json.decodeFromString<List<Int>>(saved)
+                initial.addAll(list)
+            } catch (_: Exception) {}
+        }
+        mutableStateOf<Set<Int>>(initial)
+    }
     var isLoadingQuestions by remember { mutableStateOf(true) }
+
+    fun updateAnswer(index: Int, answer: String) {
+        val nowMillis = getCurrentEpochMillis()
+        // Time-lock guard: cegah perubahan jawaban jika waktu jadwal ujian sudah lewat
+        if (nowMillis > effectiveDeadlineMillis) return
+
+        val updated = studentAnswers + (index to answer)
+        studentAnswers = updated
+        val elapsed = ((nowMillis - studentStartMillis) / 1000L).coerceAtLeast(0L)
+        coroutineScope.launch {
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.saveSignedProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                ujianId = exam.ujianId,
+                studentId = studentId,
+                startedAtMillis = studentStartMillis,
+                lastSavedAtMillis = nowMillis,
+                durationSeconds = elapsed,
+                studentAnswers = updated,
+                questions = questions
+            )
+        }
+    }
+
+    fun toggleFlagged(index: Int) {
+        val updated = if (flaggedQuestions.contains(index)) {
+            flaggedQuestions - index
+        } else {
+            flaggedQuestions + index
+        }
+        flaggedQuestions = updated
+        coroutineScope.launch {
+            try {
+                storage.setString(flaggedKey, Json.encodeToString(updated.toList()))
+            } catch (_: Exception) {}
+        }
+    }
 
     // Heartbeat & Security Lock State
     var isKickedBySupervisor by remember { mutableStateOf(false) }
@@ -96,28 +220,105 @@ fun ExamTakingScreen(
     ExamKioskEffect(enabled = !isKickedBySupervisor && !isAlreadyFinished) { _ ->
         violationCount++
         showViolationDialog = true
-        if (violationCount >= 2) {
-            isSecurityLockedByViolation = true
-        }
+        isSecurityLockedByViolation = true
         coroutineScope.launch {
             try {
                 ujianRepository.sendHeartbeat(
                     scheduleId = exam.id,
-                    status = if (violationCount >= 2) "TERKUNCI" else "MENGERJAKAN",
-                    keterangan = "Terdeteksi mencoba berpindah aplikasi / minimize (Pelanggaran ke-$violationCount)"
+                    status = "TERKUNCI",
+                    keterangan = "Ujian dibekukan: Terdeteksi keluar / meminimalkan layar ujian (Pelanggaran #$violationCount)"
                 )
             } catch (_: Exception) {}
         }
     }
 
-    // Finish Exam Dialog
+    // Finish Exam Dialog & Submissions
     var showFinishConfirmation by remember { mutableStateOf(false) }
     var submitResultData by remember { mutableStateOf<com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
     var showSubmitSuccessDialog by remember { mutableStateOf(false) }
+    var showTimesUpDialog by remember { mutableStateOf(false) }
+    var isTimesUpSubmitted by remember { mutableStateOf(false) }
 
-    // Timer Countdown (Default 90 menit atau disesuaikan)
-    var remainingSeconds by remember { mutableStateOf(90 * 60) }
+    // Timer Countdown (Recalculated every second against effectiveDeadlineMillis)
+    var remainingSeconds by remember {
+        val initialRemaining = ((effectiveDeadlineMillis - getCurrentEpochMillis()) / 1000L).coerceAtLeast(0L).toInt()
+        mutableStateOf(initialRemaining)
+    }
+
+    suspend fun performSubmitExam(isAutoSubmit: Boolean = false) {
+        if (isSubmitting) return
+        isSubmitting = true
+        var submitResp: com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile? = null
+        try {
+            val mappedAnswers = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.buildMappedAnswers(
+                questions = questions,
+                studentAnswers = studentAnswers
+            )
+            val elapsed = (totalDurationSeconds - remainingSeconds).coerceAtLeast(0L)
+            val savedAt = getCurrentEpochMillis().coerceAtMost(effectiveDeadlineMillis)
+            val payloadSig = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.computePayloadSignature(
+                scheduleId = exam.id ?: examKeyId,
+                studentId = studentId,
+                clientSavedAtMillis = savedAt,
+                mappedAnswers = mappedAnswers
+            )
+            submitResp = ujianRepository.submitExam(
+                scheduleId = exam.id ?: "",
+                durationSeconds = elapsed,
+                answers = mappedAnswers,
+                clientSavedAtMillis = savedAt,
+                payloadSignature = payloadSig,
+                autoSyncedFromLocal = false
+            )
+        } catch (_: Exception) {
+            // Jika submit gagal karena koneksi terputus, pastikan progress tetap tersimpan di Signed Vault lokal
+            // agar bisa ditarik otomatis saat siswa login / membuka halaman ujian kembali!
+            val savedAt = getCurrentEpochMillis().coerceAtMost(effectiveDeadlineMillis)
+            val elapsed = (totalDurationSeconds - remainingSeconds).coerceAtLeast(0L)
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.saveSignedProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                ujianId = exam.ujianId,
+                studentId = studentId,
+                startedAtMillis = studentStartMillis,
+                lastSavedAtMillis = savedAt,
+                durationSeconds = elapsed,
+                studentAnswers = studentAnswers,
+                questions = questions
+            )
+        } finally {
+            // Bersihkan vault lokal HANYA jika server berhasil menerima dan menilai submitResp
+            if (submitResp != null) {
+                com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(
+                    storage = storage,
+                    scheduleId = examKeyId,
+                    studentId = studentId
+                )
+            }
+
+            isSubmitting = false
+            submitResultData = submitResp
+            if (isAutoSubmit) {
+                showFinishConfirmation = false
+                isTimesUpSubmitted = true
+            } else {
+                showFinishConfirmation = false
+                showSubmitSuccessDialog = true
+            }
+        }
+    }
+
+    // Clear local storage if server reports exam was already finished (keep answers if only locked for reentry)
+    LaunchedEffect(isAlreadyFinished) {
+        if (isAlreadyFinished && !alreadyFinishedMessage.contains("Terkunci", ignoreCase = true) && !alreadyFinishedMessage.contains("LOCKED", ignoreCase = true)) {
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                studentId = studentId
+            )
+        }
+    }
 
     // Initial load: Fetch questions and lock session on server
     LaunchedEffect(exam.id) {
@@ -131,6 +332,9 @@ fun ExamTakingScreen(
                 if (hb.action == "ALREADY_FINISHED") {
                     isAlreadyFinished = true
                     alreadyFinishedMessage = hb.message ?: "Anda telah menyelesaikan dan mengumpulkan ujian ini."
+                } else if (hb.action == "LOCKED_REENTRY") {
+                    isAlreadyFinished = true
+                    alreadyFinishedMessage = hb.message ?: "🔒 Akses Ujian Terkunci: Silakan hubungi Guru Pengawas untuk membuka kembali akses masuk ujian Anda."
                 } else if (hb.action == "KICK") {
                     isKickedBySupervisor = true
                     kickMessage = hb.message ?: "Sesi Anda telah di-reset oleh Guru Pengawas."
@@ -138,7 +342,7 @@ fun ExamTakingScreen(
             }
         } catch (e: Exception) {
             val msg = e.message ?: ""
-            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true)) {
+            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true) || msg.contains("LOCKED_REENTRY", ignoreCase = true) || msg.contains("Akses Ujian Terkunci", ignoreCase = true)) {
                 isAlreadyFinished = true
                 alreadyFinishedMessage = msg
             }
@@ -173,11 +377,20 @@ fun ExamTakingScreen(
 
     // Periodic heartbeat removed — replaced by single-hit exam-start/exam-exit endpoints
 
-    // Timer Countdown
+    // Timer Countdown (Recalculated every second against effectiveDeadlineMillis)
     LaunchedEffect(Unit) {
-        while (remainingSeconds > 0) {
+        while (true) {
+            val nowMillis = getCurrentEpochMillis()
+            val sec = ((effectiveDeadlineMillis - nowMillis) / 1000L).coerceAtLeast(0L).toInt()
+            remainingSeconds = sec
+            if (sec <= 0) {
+                if (!isSubmitting && !showSubmitSuccessDialog && !isTimesUpSubmitted && !isAlreadyFinished) {
+                    showTimesUpDialog = true
+                    performSubmitExam(isAutoSubmit = true)
+                }
+                break
+            }
             delay(1000)
-            remainingSeconds--
         }
     }
 
@@ -358,7 +571,11 @@ fun ExamTakingScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Progress Bar Sisa Waktu Ujian
-                    val timeProgress = (remainingSeconds.toFloat() / (90 * 60)).coerceIn(0f, 1f)
+                    val timeProgress = if (totalDurationSeconds > 0) {
+                        (remainingSeconds.toFloat() / totalDurationSeconds).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
                     LinearProgressIndicator(
                         progress = { timeProgress },
                         modifier = Modifier
@@ -502,11 +719,7 @@ fun ExamTakingScreen(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
                                             .clickable {
-                                                flaggedQuestions = if (isCurrentFlagged) {
-                                                    flaggedQuestions - currentIndex
-                                                } else {
-                                                    flaggedQuestions + currentIndex
-                                                }
+                                                toggleFlagged(currentIndex)
                                             }
                                     ) {
                                         Row(
@@ -611,7 +824,7 @@ fun ExamTakingScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .clickable {
-                                                    studentAnswers = studentAnswers + (currentIndex to label)
+                                                    updateAnswer(currentIndex, label)
                                                 },
                                             shape = RoundedCornerShape(12.dp),
                                             colors = CardDefaults.cardColors(
@@ -665,7 +878,7 @@ fun ExamTakingScreen(
                                 OutlinedTextField(
                                     value = currentAnswer,
                                     onValueChange = { newAnswer ->
-                                        studentAnswers = studentAnswers + (currentIndex to newAnswer)
+                                        updateAnswer(currentIndex, newAnswer)
                                     },
                                     placeholder = {
                                         Text(if (isIsian) "Ketik kata isian untuk mengisi bagian (_) di sini..." else "Ketik jawaban lengkap di sini...")
@@ -1362,38 +1575,8 @@ fun ExamTakingScreen(
                     Button(
                         enabled = !isSubmitting,
                         onClick = {
-                            isSubmitting = true
                             coroutineScope.launch {
-                                var submitResp: com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile? = null
-                                try {
-                                    val mappedAnswers = mutableMapOf<String, String>()
-                                    questions.forEachIndexed { idx, q ->
-                                        val ans = studentAnswers[idx]
-                                        if (ans != null) {
-                                            val key = q.id ?: (idx + 1).toString()
-                                            mappedAnswers[key] = ans
-                                            mappedAnswers[(idx + 1).toString()] = ans
-                                        }
-                                    }
-                                    val elapsed = (90 * 60 - remainingSeconds).toLong().coerceAtLeast(0L)
-                                    submitResp = ujianRepository.submitExam(
-                                        scheduleId = exam.id ?: "",
-                                        durationSeconds = elapsed,
-                                        answers = mappedAnswers
-                                    )
-                                } catch (_: Exception) {
-                                    try {
-                                        ujianRepository.examExit(
-                                            scheduleId = exam.id,
-                                            status = "SELESAI",
-                                            keterangan = "Ujian selesai dikumpulkan oleh murid"
-                                        )
-                                    } catch (_: Exception) {}
-                                }
-                                showFinishConfirmation = false
-                                isSubmitting = false
-                                submitResultData = submitResp
-                                showSubmitSuccessDialog = true
+                                performSubmitExam(isAutoSubmit = false)
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
@@ -1503,6 +1686,112 @@ fun ExamTakingScreen(
             )
         }
 
+        // 4c. Dialog Waktu Ujian Habis (Auto Submit)
+        if (showTimesUpDialog) {
+            val hasEssay = submitResultData?.hasUngradedEssay == true || questions.any { it.type == "URAIAN" }
+            AlertDialog(
+                onDismissRequest = { /* Must click button to dismiss and leave */ },
+                icon = {
+                    Icon(
+                        if (isSubmitting) Icons.Default.HourglassTop else Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = if (isSubmitting) Color(0xFFD97706) else Color(0xFF059669),
+                        modifier = Modifier.size(44.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        if (isSubmitting) "⏰ Waktu Ujian Telah Habis!" else "🎉 Lembar Jawaban Berhasil Dikumpulkan!",
+                        fontWeight = FontWeight.Bold,
+                        color = DarkNavy,
+                        fontSize = 17.sp,
+                        textAlign = TextAlign.Center
+                    )
+                },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (isSubmitting) {
+                            Text(
+                                text = "Waktu pengerjaan ujian telah berakhir sesuai jadwal. Lembar jawaban Anda sedang dikumpulkan secara otomatis oleh sistem, mohon tunggu sebentar...",
+                                fontSize = 13.sp,
+                                color = SlateGray,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 18.sp
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(32.dp),
+                                color = PrimaryTeal,
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            if (hasEssay) {
+                                Text(
+                                    text = "Waktu pengerjaan telah habis dan lembar jawaban Anda telah tersimpan dengan aman di sistem. Karena ujian ini memiliki soal bertipe Uraian, nilai akhir akan dipublikasikan setelah seluruh jawaban diperiksa oleh Guru Pengampu.",
+                                    fontSize = 13.sp,
+                                    color = SlateGray,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 18.sp
+                                )
+                            } else {
+                                Text(
+                                    text = "Waktu pengerjaan telah habis. Seluruh lembar jawaban Anda telah berhasil dievaluasi oleh sistem.",
+                                    fontSize = 13.sp,
+                                    color = SlateGray,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Surface(
+                                    color = Color(0xFFECFDF5),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFA7F3D0)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "NILAI ANDA",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF065F46)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "${submitResultData?.score ?: 0.0}",
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = Color(0xFF059669)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    if (!isSubmitting) {
+                        Button(
+                            onClick = {
+                                showTimesUpDialog = false
+                                releaseExamKiosk()
+                                onExamSubmitted()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Kembali ke Beranda", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            )
+        }
+
         // 5. Peringatan Pelanggaran Berpindah Aplikasi (Fasilitas 7.2)
         if (showViolationDialog && !isSecurityLockedByViolation) {
             AlertDialog(
@@ -1558,7 +1847,7 @@ fun ExamTakingScreen(
             )
         }
 
-        // 6. Ujian Terkunci Total Karena Pelanggaran Berulang (Fasilitas 7.2 & 7.3)
+        // 6. Ujian Terkunci Total Karena Pelanggaran (Fasilitas 7.2 & 7.3)
         if (isSecurityLockedByViolation) {
             AlertDialog(
                 onDismissRequest = {}, // Non-dismissible
@@ -1582,7 +1871,7 @@ fun ExamTakingScreen(
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Aplikasi mendeteksi perpindahan aplikasi berulang kali ($violationCount kali). Akses pengerjaan soal telah dikunci demi integritas ujian.",
+                            text = "Aplikasi mendeteksi Anda keluar dari layar ujian / mematikan layar. Akses pengerjaan soal telah dikunci otomatis demi integritas ujian.",
                             fontSize = 13.sp,
                             color = DarkNavy,
                             textAlign = TextAlign.Center,
@@ -1590,7 +1879,7 @@ fun ExamTakingScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Silakan panggil Guru Pengawas di ruangan untuk memasukkan Kunci Keluar Darurat (Key Pengawas 6-digit) agar modul ujian dapat dibuka kembali.",
+                            text = "1. Panggil Guru Pengawas untuk memasukkan Key Pengawas (6-digit) di bawah guna melepas kunci layar HP.\n2. Untuk dapat masuk dan mengikuti ujian kembali, Guru Pengawas harus membuka izin akses Anda pada tab 'Siswa Keluar / Terkunci' di Web Pengawas.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             textAlign = TextAlign.Center,
@@ -1628,18 +1917,8 @@ fun ExamTakingScreen(
                                     )
                                     isVerifyingViolationKey = false
                                     if (resp.valid) {
-                                        // Reset violation dan pulihkan akses ujian
-                                        isSecurityLockedByViolation = false
-                                        violationCount = 0
-                                        showViolationDialog = false
-                                        violationKeyInput = ""
-                                        try {
-                                            ujianRepository.sendHeartbeat(
-                                                scheduleId = exam.id,
-                                                status = "MENGERJAKAN",
-                                                keterangan = "Kunci ujian dibuka kembali oleh Pengawas"
-                                            )
-                                        } catch (_: Exception) {}
+                                        releaseExamKiosk()
+                                        onEmergencyExit()
                                     } else {
                                         violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
                                     }
@@ -1650,44 +1929,14 @@ fun ExamTakingScreen(
                             }
                         },
                         enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isVerifyingViolationKey) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("Buka Kunci Ujian")
+                            Text("Buka Kunci Layar & Keluar")
                         }
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                isVerifyingViolationKey = true
-                                violationKeyError = null
-                                try {
-                                    val resp = ujianRepository.verifyEmergencyExitKey(
-                                        scheduleId = exam.id ?: "",
-                                        kelas = studentKelas,
-                                        key = violationKeyInput.trim()
-                                    )
-                                    isVerifyingViolationKey = false
-                                    if (resp.valid) {
-                                        releaseExamKiosk()
-                                        onEmergencyExit()
-                                    } else {
-                                        violationKeyError = resp.message ?: "Key Pengawas salah untuk keluar darurat."
-                                    }
-                                } catch (e: Exception) {
-                                    isVerifyingViolationKey = false
-                                    violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
-                                }
-                            }
-                        },
-                        enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
-                    ) {
-                        Text("Keluar Darurat")
                     }
                 }
             )

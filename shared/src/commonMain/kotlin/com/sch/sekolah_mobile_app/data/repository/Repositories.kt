@@ -310,11 +310,102 @@ class UjianRepository(
     suspend fun submitExam(
         scheduleId: String? = null,
         durationSeconds: Long = 0,
-        answers: Map<String, String> = emptyMap()
+        answers: Map<String, String> = emptyMap(),
+        clientSavedAtMillis: Long? = null,
+        payloadSignature: String? = null,
+        autoSyncedFromLocal: Boolean? = null
     ): com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile {
         val token = authRepository.getAccessToken()
             ?: throw IllegalStateException("Sesi login tidak ditemukan. Silakan masuk kembali.")
-        return apiClient.submitExam(token, scheduleId, durationSeconds, answers)
+        return apiClient.submitExam(
+            token = token,
+            scheduleId = scheduleId,
+            durationSeconds = durationSeconds,
+            answers = answers,
+            clientSavedAtMillis = clientSavedAtMillis,
+            payloadSignature = payloadSignature,
+            autoSyncedFromLocal = autoSyncedFromLocal
+        )
+    }
+
+    /**
+     * Sinkronisasi otomatis jawaban lokal yang belum terkumpul (status BELUM_MENGUMPULKAN / waktu ujian telah berakhir).
+     * Memverifikasi tanda tangan digital (AES-256-GCM + HMAC-SHA256) sebelum mengirim ke server.
+     */
+    suspend fun syncPendingLocalExams(
+        exams: List<ExamScheduleItem>,
+        studentId: String,
+        isExamTimeEnded: (ExamScheduleItem) -> Boolean
+    ): List<String> {
+        if (studentId.isBlank()) return emptyList()
+        val storage = com.sch.sekolah_mobile_app.data.storage.getPlatformStorage()
+        val syncedTitles = mutableListOf<String>()
+
+        for (exam in exams) {
+            val scheduleId = exam.id ?: continue
+            val isEnded = isExamTimeEnded(exam) || exam.studentStatus.equals("BELUM_MENGUMPULKAN", ignoreCase = true)
+            if (!isEnded) continue
+
+            // Jika server sudah mencatat SELESAI dan tidak ada flag BELUM_MENGUMPULKAN, bersihkan sisa cache
+            if (exam.studentStatus.equals("SELESAI", ignoreCase = true)) {
+                com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(storage, scheduleId, studentId)
+                continue
+            }
+
+            val vaultPayload = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.loadSignedProgress(
+                storage = storage,
+                scheduleId = scheduleId,
+                studentId = studentId
+            ) ?: continue
+
+            if (vaultPayload.answersByIndex.isEmpty() && vaultPayload.mappedAnswers.isEmpty()) {
+                continue
+            }
+
+            try {
+                // Pastikan map jawaban mencakup questionId jika tersedia dari server
+                var finalMappedAnswers = vaultPayload.mappedAnswers
+                if (!exam.ujianId.isNullOrBlank()) {
+                    try {
+                        val detail = getUjianDetail(exam.ujianId)
+                        if (detail.questions.isNotEmpty()) {
+                            val intAnswers = mutableMapOf<Int, String>()
+                            vaultPayload.answersByIndex.forEach { (k, v) ->
+                                k.toIntOrNull()?.let { intAnswers[it] = v }
+                            }
+                            finalMappedAnswers = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.buildMappedAnswers(
+                                questions = detail.questions,
+                                studentAnswers = intAnswers
+                            )
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                val savedAt = vaultPayload.lastSavedAtMillis
+                val payloadSig = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.computePayloadSignature(
+                    scheduleId = scheduleId,
+                    studentId = studentId,
+                    clientSavedAtMillis = savedAt,
+                    mappedAnswers = finalMappedAnswers
+                )
+
+                submitExam(
+                    scheduleId = scheduleId,
+                    durationSeconds = vaultPayload.durationSeconds,
+                    answers = finalMappedAnswers,
+                    clientSavedAtMillis = savedAt,
+                    payloadSignature = payloadSig,
+                    autoSyncedFromLocal = true
+                )
+
+                // Hapus vault lokal hanya setelah server berhasil menerima & memvalidasi jawaban
+                com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(storage, scheduleId, studentId)
+                syncedTitles.add(exam.judulUjian ?: exam.namaMapel ?: "Ujian")
+            } catch (_: Exception) {
+                // Jika gagal koneksi saat sync, biarkan tetap di vault agar dicoba kembali
+            }
+        }
+        return syncedTitles
     }
 
     suspend fun verifyEmergencyExitKey(

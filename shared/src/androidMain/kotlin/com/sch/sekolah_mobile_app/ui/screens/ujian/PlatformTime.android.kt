@@ -94,22 +94,29 @@ actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
     val clean = dateTimeStr.trim()
     return try {
         if (clean.contains("T")) {
-            val instant = Instant.parse(clean)
-            instant.toEpochMilli()
-        } else {
-            if (clean.length >= 16 && clean.contains(" ")) {
-                val parts = clean.split(" ")
-                val datePart = parts[0]
-                val timePart = parts[1]
-                val ldt = LocalDateTime.parse("${datePart}T${timePart}")
+            try {
+                Instant.parse(clean).toEpochMilli()
+            } catch (_: Exception) {
+                val withoutZone = clean.substringBefore("Z").substringBefore("+")
+                val ldt = LocalDateTime.parse(withoutZone)
                 ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
-            } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
-                val datePart = clean.take(10)
-                val ldt = LocalDateTime.parse("${datePart}T00:00:00")
-                ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
-            } else {
-                null
             }
+        } else if (clean.contains(" ")) {
+            val parts = clean.split(" ")
+            val datePart = parts[0]
+            val timePart = parts[1]
+            val timeTokens = timePart.split(":")
+            val h = timeTokens.getOrNull(0)?.padStart(2, '0') ?: "00"
+            val m = timeTokens.getOrNull(1)?.padStart(2, '0') ?: "00"
+            val s = timeTokens.getOrNull(2)?.padStart(2, '0') ?: "00"
+            val ldt = LocalDateTime.parse("${datePart}T$h:$m:$s")
+            ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
+        } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+            val datePart = clean.take(10)
+            val ldt = LocalDateTime.parse("${datePart}T00:00:00")
+            ldt.atZone(ZONE_WIB).toInstant().toEpochMilli()
+        } else {
+            null
         }
     } catch (_: Exception) {
         null

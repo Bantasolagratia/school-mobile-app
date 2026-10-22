@@ -334,13 +334,25 @@ class ApiClient(
         token: String,
         scheduleId: String? = null,
         durationSeconds: Long = 0,
-        answers: Map<String, String> = emptyMap()
+        answers: Map<String, String> = emptyMap(),
+        clientSavedAtMillis: Long? = null,
+        payloadSignature: String? = null,
+        autoSyncedFromLocal: Boolean? = null
     ): SubmitExamResponseMobile {
         val url = ApiConfig.getSubmitExamUrl()
         val response = httpClient.post(url) {
             header("Authorization", "Bearer $token")
             contentType(ContentType.Application.Json)
-            setBody(SubmitExamRequestMobile(scheduleId = scheduleId, durationSeconds = durationSeconds, answers = answers))
+            setBody(
+                SubmitExamRequestMobile(
+                    scheduleId = scheduleId,
+                    durationSeconds = durationSeconds,
+                    clientSavedAtMillis = clientSavedAtMillis,
+                    payloadSignature = payloadSignature,
+                    autoSyncedFromLocal = autoSyncedFromLocal,
+                    answers = answers
+                )
+            )
         }
 
         if (!response.status.isSuccess()) {

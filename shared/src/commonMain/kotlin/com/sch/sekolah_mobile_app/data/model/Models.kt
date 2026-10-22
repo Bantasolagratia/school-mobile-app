@@ -344,6 +344,9 @@ data class UjianDetailMobile(
 data class SubmitExamRequestMobile(
     val scheduleId: String? = null,
     val durationSeconds: Long = 0,
+    val clientSavedAtMillis: Long? = null,
+    val payloadSignature: String? = null,
+    val autoSyncedFromLocal: Boolean? = null,
     val answers: Map<String, String> = emptyMap()
 )
 

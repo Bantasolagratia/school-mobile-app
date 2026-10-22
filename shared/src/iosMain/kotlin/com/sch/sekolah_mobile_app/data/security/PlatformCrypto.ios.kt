@@ -8,6 +8,14 @@ actual object PlatformCrypto {
     }
 
     actual fun decryptAesGcm(secretKeyB64: String, ivB64: String, encryptedPayloadB64: String): String {
+        return encryptedPayloadB64
+    }
+
+    actual fun encryptAesGcm(secretKeyB64: String, plaintext: String): Pair<String, String> {
+        return "ios_iv" to plaintext
+    }
+
+    actual fun hmacSha256B64(secret: String, data: String): String {
         return ""
     }
 }
