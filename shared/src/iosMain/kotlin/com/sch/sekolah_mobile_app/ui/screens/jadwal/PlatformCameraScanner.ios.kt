@@ -16,5 +16,6 @@ actual fun PlatformCameraScanner(
     Box(
         modifier = modifier.fillMaxSize().background(Color.Black),
         contentAlignment = Alignment.Center
-    )
+    ) {
+    }
 }
