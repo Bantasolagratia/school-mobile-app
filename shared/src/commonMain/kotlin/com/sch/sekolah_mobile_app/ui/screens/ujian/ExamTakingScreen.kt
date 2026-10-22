@@ -206,15 +206,13 @@ fun ExamTakingScreen(
     ExamKioskEffect(enabled = !isKickedBySupervisor && !isAlreadyFinished) { _ ->
         violationCount++
         showViolationDialog = true
-        if (violationCount >= 2) {
-            isSecurityLockedByViolation = true
-        }
+        isSecurityLockedByViolation = true
         coroutineScope.launch {
             try {
                 ujianRepository.sendHeartbeat(
                     scheduleId = exam.id,
-                    status = if (violationCount >= 2) "TERKUNCI" else "MENGERJAKAN",
-                    keterangan = "Terdeteksi mencoba berpindah aplikasi / minimize (Pelanggaran ke-$violationCount)"
+                    status = "TERKUNCI",
+                    keterangan = "Ujian dibekukan: Terdeteksi keluar / meminimalkan layar ujian (Pelanggaran #$violationCount)"
                 )
             } catch (_: Exception) {}
         }
@@ -280,9 +278,9 @@ fun ExamTakingScreen(
         }
     }
 
-    // Clear local storage if server reports exam was already finished
+    // Clear local storage if server reports exam was already finished (keep answers if only locked for reentry)
     LaunchedEffect(isAlreadyFinished) {
-        if (isAlreadyFinished) {
+        if (isAlreadyFinished && !alreadyFinishedMessage.contains("Terkunci", ignoreCase = true) && !alreadyFinishedMessage.contains("LOCKED", ignoreCase = true)) {
             storage.remove(startKey)
             storage.remove(answersKey)
             storage.remove(flaggedKey)
@@ -301,6 +299,9 @@ fun ExamTakingScreen(
                 if (hb.action == "ALREADY_FINISHED") {
                     isAlreadyFinished = true
                     alreadyFinishedMessage = hb.message ?: "Anda telah menyelesaikan dan mengumpulkan ujian ini."
+                } else if (hb.action == "LOCKED_REENTRY") {
+                    isAlreadyFinished = true
+                    alreadyFinishedMessage = hb.message ?: "🔒 Akses Ujian Terkunci: Silakan hubungi Guru Pengawas untuk membuka kembali akses masuk ujian Anda."
                 } else if (hb.action == "KICK") {
                     isKickedBySupervisor = true
                     kickMessage = hb.message ?: "Sesi Anda telah di-reset oleh Guru Pengawas."
@@ -308,7 +309,7 @@ fun ExamTakingScreen(
             }
         } catch (e: Exception) {
             val msg = e.message ?: ""
-            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true)) {
+            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true) || msg.contains("LOCKED_REENTRY", ignoreCase = true) || msg.contains("Akses Ujian Terkunci", ignoreCase = true)) {
                 isAlreadyFinished = true
                 alreadyFinishedMessage = msg
             }
@@ -1813,7 +1814,7 @@ fun ExamTakingScreen(
             )
         }
 
-        // 6. Ujian Terkunci Total Karena Pelanggaran Berulang (Fasilitas 7.2 & 7.3)
+        // 6. Ujian Terkunci Total Karena Pelanggaran (Fasilitas 7.2 & 7.3)
         if (isSecurityLockedByViolation) {
             AlertDialog(
                 onDismissRequest = {}, // Non-dismissible
@@ -1837,7 +1838,7 @@ fun ExamTakingScreen(
                 text = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "Aplikasi mendeteksi perpindahan aplikasi berulang kali ($violationCount kali). Akses pengerjaan soal telah dikunci demi integritas ujian.",
+                            text = "Aplikasi mendeteksi Anda keluar dari layar ujian / mematikan layar. Akses pengerjaan soal telah dikunci otomatis demi integritas ujian.",
                             fontSize = 13.sp,
                             color = DarkNavy,
                             textAlign = TextAlign.Center,
@@ -1845,7 +1846,7 @@ fun ExamTakingScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Silakan panggil Guru Pengawas di ruangan untuk memasukkan Kunci Keluar Darurat (Key Pengawas 6-digit) agar modul ujian dapat dibuka kembali.",
+                            text = "1. Panggil Guru Pengawas untuk memasukkan Key Pengawas (6-digit) di bawah guna melepas kunci layar HP.\n2. Untuk dapat masuk dan mengikuti ujian kembali, Guru Pengawas harus membuka izin akses Anda pada tab 'Siswa Keluar / Terkunci' di Web Pengawas.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             textAlign = TextAlign.Center,
@@ -1883,18 +1884,8 @@ fun ExamTakingScreen(
                                     )
                                     isVerifyingViolationKey = false
                                     if (resp.valid) {
-                                        // Reset violation dan pulihkan akses ujian
-                                        isSecurityLockedByViolation = false
-                                        violationCount = 0
-                                        showViolationDialog = false
-                                        violationKeyInput = ""
-                                        try {
-                                            ujianRepository.sendHeartbeat(
-                                                scheduleId = exam.id,
-                                                status = "MENGERJAKAN",
-                                                keterangan = "Kunci ujian dibuka kembali oleh Pengawas"
-                                            )
-                                        } catch (_: Exception) {}
+                                        releaseExamKiosk()
+                                        onEmergencyExit()
                                     } else {
                                         violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
                                     }
@@ -1905,44 +1896,14 @@ fun ExamTakingScreen(
                             }
                         },
                         enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isVerifyingViolationKey) {
                             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("Buka Kunci Ujian")
+                            Text("Buka Kunci Layar & Keluar")
                         }
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(
-                        onClick = {
-                            coroutineScope.launch {
-                                isVerifyingViolationKey = true
-                                violationKeyError = null
-                                try {
-                                    val resp = ujianRepository.verifyEmergencyExitKey(
-                                        scheduleId = exam.id ?: "",
-                                        kelas = studentKelas,
-                                        key = violationKeyInput.trim()
-                                    )
-                                    isVerifyingViolationKey = false
-                                    if (resp.valid) {
-                                        releaseExamKiosk()
-                                        onEmergencyExit()
-                                    } else {
-                                        violationKeyError = resp.message ?: "Key Pengawas salah untuk keluar darurat."
-                                    }
-                                } catch (e: Exception) {
-                                    isVerifyingViolationKey = false
-                                    violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
-                                }
-                            }
-                        },
-                        enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626))
-                    ) {
-                        Text("Keluar Darurat")
                     }
                 }
             )

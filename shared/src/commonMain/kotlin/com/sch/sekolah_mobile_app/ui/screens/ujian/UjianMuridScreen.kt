@@ -256,7 +256,7 @@ fun UjianMuridScreen(
                             ExamCardItem(
                                 exam = exam,
                                 onStartExam = {
-                                    if (exam.studentStatus != "SELESAI") {
+                                    if (exam.studentStatus != "SELESAI" && exam.studentStatus != "TERKUNCI") {
                                         onStartExam(exam)
                                     }
                                 }
@@ -412,17 +412,18 @@ private fun ExamCardItem(
             Spacer(modifier = Modifier.height(16.dp))
 
             val isSubmitted = exam.studentStatus == "SELESAI"
+            val isLockedReentry = exam.studentStatus == "TERKUNCI"
             val isDianulir = exam.studentStatus == "DIANULIR"
 
             // Tombol Mulai Ujian (Fasilitas 6.3)
             Button(
                 onClick = onStartExam,
-                enabled = canStart && !isSubmitted,
+                enabled = canStart && !isSubmitted && !isLockedReentry,
                 modifier = Modifier.fillMaxWidth().height(46.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isDianulir) Color(0xFFD97706) else PrimaryTeal,
-                    disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else SurfaceVariantColor
+                    disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else if (isLockedReentry) Color(0xFFFEE2E2) else SurfaceVariantColor
                 )
             ) {
                 if (isSubmitted) {
@@ -438,6 +439,20 @@ private fun ExamCardItem(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color(0xFF059669)
+                    )
+                } else if (isLockedReentry) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = Color(0xFFDC2626),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Akses Terkunci (Hubungi Pengawas)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFDC2626)
                     )
                 } else if (isDianulir && canStart) {
                     Icon(
@@ -493,6 +508,9 @@ private fun ExamCardItem(
 private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, Color> {
     if (exam.studentStatus == "SELESAI") {
         return Triple(false, "Sudah Dikerjakan", Color(0xFF059669))
+    }
+    if (exam.studentStatus == "TERKUNCI") {
+        return Triple(false, "Akses Terkunci", Color(0xFFDC2626))
     }
 
     val isDianulir = exam.studentStatus == "DIANULIR"
