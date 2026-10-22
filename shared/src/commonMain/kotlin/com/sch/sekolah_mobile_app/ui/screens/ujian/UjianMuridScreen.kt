@@ -238,6 +238,37 @@ fun UjianMuridScreen(
                 }
 
                 else -> {
+                    val sortedExams = remember(upcomingExams) {
+                        upcomingExams.sortedWith { a, b ->
+                            val (canStartA, badgeA, _) = evaluateExamTiming(a)
+                            val (canStartB, badgeB, _) = evaluateExamTiming(b)
+
+                            fun getRank(canStart: Boolean, badge: String): Int {
+                                if (badge.contains("Dikerjakan") || badge.contains("Sudah") || badge.contains("Berakhir") || badge.contains("Selesai")) return 5
+                                if (badge.contains("Habis")) return 4
+                                if (badge.contains("Mengerjakan") || badge.contains("Dianulir (Ujian Ulang)")) return 1
+                                if (badge.contains("Terkunci") || badge.contains("Belum Mengumpulkan")) return 2
+                                if (canStart) return 2
+                                return 3
+                            }
+
+                            val rankA = getRank(canStartA, badgeA)
+                            val rankB = getRank(canStartB, badgeB)
+
+                            if (rankA != rankB) {
+                                rankA.compareTo(rankB)
+                            } else {
+                                val dateA = a.waktuMulai ?: "${a.tanggal ?: ""} ${a.jamMulai ?: ""}"
+                                val dateB = b.waktuMulai ?: "${b.tanggal ?: ""} ${b.jamMulai ?: ""}"
+                                if (rankA < 4) {
+                                    dateA.compareTo(dateB)
+                                } else {
+                                    dateB.compareTo(dateA)
+                                }
+                            }
+                        }
+                    }
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                         contentPadding = PaddingValues(vertical = 16.dp),
@@ -300,7 +331,7 @@ fun UjianMuridScreen(
                             }
                         }
 
-                        items(upcomingExams) { exam ->
+                        items(sortedExams) { exam ->
                             ExamCardItem(
                                 exam = exam,
                                 onStartExam = {
