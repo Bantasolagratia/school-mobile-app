@@ -92,20 +92,38 @@ actual fun parseScheduleToEpochMillis(dateTimeStr: String?): Long? {
     return try {
         if (clean.contains("T")) {
             val isoFormatter = NSISO8601DateFormatter()
-            val date = isoFormatter.dateFromString(clean) ?: return null
+            val date = isoFormatter.dateFromString(clean)
+            if (date != null) {
+                return (date.timeIntervalSince1970 * 1000.0).toLong()
+            }
+            val wibFormatter = NSDateFormatter()
+            wibFormatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+            wibFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            val cleanNoZ = clean.substringBefore("Z").substringBefore("+")
+            val fallbackDate = wibFormatter.dateFromString(cleanNoZ)
+            if (fallbackDate != null) {
+                return (fallbackDate.timeIntervalSince1970 * 1000.0).toLong()
+            }
+        }
+        val formatter = NSDateFormatter()
+        formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
+        if (clean.contains(" ")) {
+            val parts = clean.split(" ")
+            val datePart = parts[0]
+            val timePart = parts[1]
+            val timeTokens = timePart.split(":")
+            val h = timeTokens.getOrNull(0)?.padStart(2, '0') ?: "00"
+            val m = timeTokens.getOrNull(1)?.padStart(2, '0') ?: "00"
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            val normalized = "$datePart $h:$m"
+            val date = formatter.dateFromString(normalized) ?: return null
+            (date.timeIntervalSince1970 * 1000.0).toLong()
+        } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
+            formatter.dateFormat = "yyyy-MM-dd"
+            val date = formatter.dateFromString(clean.take(10)) ?: return null
             (date.timeIntervalSince1970 * 1000.0).toLong()
         } else {
-            val formatter = NSDateFormatter()
-            formatter.timeZone = NSTimeZone.timeZoneWithName("Asia/Jakarta")
-            if (clean.length >= 16 && clean.contains(" ")) {
-                formatter.dateFormat = "yyyy-MM-dd HH:mm"
-            } else if (clean.length >= 10 && clean[4] == '-' && clean[7] == '-') {
-                formatter.dateFormat = "yyyy-MM-dd"
-            } else {
-                return null
-            }
-            val date = formatter.dateFromString(clean) ?: return null
-            (date.timeIntervalSince1970 * 1000.0).toLong()
+            null
         }
     } catch (_: Exception) {
         null
