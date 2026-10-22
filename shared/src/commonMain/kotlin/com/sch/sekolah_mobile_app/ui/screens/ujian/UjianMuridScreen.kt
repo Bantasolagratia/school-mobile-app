@@ -38,9 +38,13 @@ fun UjianMuridScreen(
     var upcomingExams by remember { mutableStateOf<List<ExamScheduleItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var autoSyncBannerMessage by remember { mutableStateOf<String?>(null) }
     var currentServerTimeIso by remember { mutableStateOf<String?>(null) }
 
     val studentKelas = profile?.displayDetail ?: "Kelas 10-B"
+    val studentId = remember(profile) {
+        profile?.nis?.takeIf { it.isNotBlank() } ?: profile?.username ?: "default_student"
+    }
 
     fun loadData() {
         isLoading = true
@@ -53,7 +57,21 @@ fun UjianMuridScreen(
                     currentServerTimeIso = hb.serverTime
                 } catch (_: Exception) {}
 
-                val exams = ujianRepository.getUpcomingExams(studentKelas)
+                var exams = ujianRepository.getUpcomingExams(studentKelas)
+
+                // Tarik otomatis jawaban lokal yang belum terkumpul dari Signed Vault jika waktu ujian sudah selesai
+                val syncedTitles = ujianRepository.syncPendingLocalExams(
+                    exams = exams,
+                    studentId = studentId
+                ) { ex ->
+                    val (_, badge, _) = evaluateExamTiming(ex)
+                    badge.contains("Selesai", ignoreCase = true)
+                }
+                if (syncedTitles.isNotEmpty()) {
+                    autoSyncBannerMessage = "Jawaban lokal untuk ${syncedTitles.joinToString(", ")} berhasil disinkronisasi otomatis ke server!"
+                    exams = ujianRepository.getUpcomingExams(studentKelas)
+                }
+
                 upcomingExams = exams
                 isLoading = false
             } catch (e: Exception) {
@@ -252,6 +270,36 @@ fun UjianMuridScreen(
                             }
                         }
 
+                        if (autoSyncBannerMessage != null) {
+                            item {
+                                Surface(
+                                    color = Color(0xFFD1FAE5),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = Color(0xFF059669),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Text(
+                                            text = autoSyncBannerMessage ?: "",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF065F46),
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         items(upcomingExams) { exam ->
                             ExamCardItem(
                                 exam = exam,
@@ -413,17 +461,18 @@ private fun ExamCardItem(
 
             val isSubmitted = exam.studentStatus == "SELESAI"
             val isLockedReentry = exam.studentStatus == "TERKUNCI"
+            val isUnsubmitted = exam.studentStatus == "BELUM_MENGUMPULKAN"
             val isDianulir = exam.studentStatus == "DIANULIR"
 
             // Tombol Mulai Ujian (Fasilitas 6.3)
             Button(
                 onClick = onStartExam,
-                enabled = canStart && !isSubmitted && !isLockedReentry,
+                enabled = canStart && !isSubmitted && !isLockedReentry && !isUnsubmitted,
                 modifier = Modifier.fillMaxWidth().height(46.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isDianulir) Color(0xFFD97706) else PrimaryTeal,
-                    disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else if (isLockedReentry) Color(0xFFFEE2E2) else SurfaceVariantColor
+                    disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else if (isLockedReentry) Color(0xFFFEE2E2) else if (isUnsubmitted) Color(0xFFFEF3C7) else SurfaceVariantColor
                 )
             ) {
                 if (isSubmitted) {
@@ -453,6 +502,20 @@ private fun ExamCardItem(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFDC2626)
+                    )
+                } else if (isUnsubmitted) {
+                    Icon(
+                        Icons.Default.Sync,
+                        contentDescription = null,
+                        tint = Color(0xFFB45309),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Belum Mengumpulkan (Buka di HP Pengerjaan)",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFB45309)
                     )
                 } else if (isDianulir && canStart) {
                     Icon(
@@ -511,6 +574,9 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
     }
     if (exam.studentStatus == "TERKUNCI") {
         return Triple(false, "Akses Terkunci", Color(0xFFDC2626))
+    }
+    if (exam.studentStatus == "BELUM_MENGUMPULKAN") {
+        return Triple(false, "Belum Mengumpulkan", Color(0xFFD97706))
     }
 
     val isDianulir = exam.studentStatus == "DIANULIR"

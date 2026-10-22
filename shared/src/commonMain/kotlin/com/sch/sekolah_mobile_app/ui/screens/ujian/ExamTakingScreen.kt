@@ -139,14 +139,15 @@ fun ExamTakingScreen(
     var currentIndex by remember { mutableStateOf(0) }
     var studentAnswers by remember {
         val initial = mutableMapOf<Int, String>()
-        val saved = storage.getString(answersKey)
-        if (!saved.isNullOrBlank()) {
-            try {
-                val map = Json.decodeFromString<Map<String, String>>(saved)
-                map.forEach { (k, v) ->
-                    k.toIntOrNull()?.let { initial[it] = v }
-                }
-            } catch (_: Exception) {}
+        val signedVault = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.loadSignedProgress(
+            storage = storage,
+            scheduleId = examKeyId,
+            studentId = studentId
+        )
+        if (signedVault != null) {
+            signedVault.answersByIndex.forEach { (k, v) ->
+                k.toIntOrNull()?.let { initial[it] = v }
+            }
         }
         mutableStateOf<Map<Int, String>>(initial)
     }
@@ -164,12 +165,25 @@ fun ExamTakingScreen(
     var isLoadingQuestions by remember { mutableStateOf(true) }
 
     fun updateAnswer(index: Int, answer: String) {
+        val nowMillis = getCurrentEpochMillis()
+        // Time-lock guard: cegah perubahan jawaban jika waktu jadwal ujian sudah lewat
+        if (nowMillis > effectiveDeadlineMillis) return
+
         val updated = studentAnswers + (index to answer)
         studentAnswers = updated
+        val elapsed = ((nowMillis - studentStartMillis) / 1000L).coerceAtLeast(0L)
         coroutineScope.launch {
-            try {
-                storage.setString(answersKey, Json.encodeToString(updated.mapKeys { it.key.toString() }))
-            } catch (_: Exception) {}
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.saveSignedProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                ujianId = exam.ujianId,
+                studentId = studentId,
+                startedAtMillis = studentStartMillis,
+                lastSavedAtMillis = nowMillis,
+                durationSeconds = elapsed,
+                studentAnswers = updated,
+                questions = questions
+            )
         }
     }
 
@@ -237,34 +251,51 @@ fun ExamTakingScreen(
         isSubmitting = true
         var submitResp: com.sch.sekolah_mobile_app.data.model.SubmitExamResponseMobile? = null
         try {
-            val mappedAnswers = mutableMapOf<String, String>()
-            questions.forEachIndexed { idx, q ->
-                val ans = studentAnswers[idx]
-                if (ans != null) {
-                    val key = q.id ?: (idx + 1).toString()
-                    mappedAnswers[key] = ans
-                    mappedAnswers[(idx + 1).toString()] = ans
-                }
-            }
+            val mappedAnswers = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.buildMappedAnswers(
+                questions = questions,
+                studentAnswers = studentAnswers
+            )
             val elapsed = (totalDurationSeconds - remainingSeconds).coerceAtLeast(0L)
+            val savedAt = getCurrentEpochMillis().coerceAtMost(effectiveDeadlineMillis)
+            val payloadSig = com.sch.sekolah_mobile_app.data.security.ExamLocalVault.computePayloadSignature(
+                scheduleId = exam.id ?: examKeyId,
+                studentId = studentId,
+                clientSavedAtMillis = savedAt,
+                mappedAnswers = mappedAnswers
+            )
             submitResp = ujianRepository.submitExam(
                 scheduleId = exam.id ?: "",
                 durationSeconds = elapsed,
-                answers = mappedAnswers
+                answers = mappedAnswers,
+                clientSavedAtMillis = savedAt,
+                payloadSignature = payloadSig,
+                autoSyncedFromLocal = false
             )
         } catch (_: Exception) {
-            try {
-                ujianRepository.examExit(
-                    scheduleId = exam.id,
-                    status = "SELESAI",
-                    keterangan = if (isAutoSubmit) "Waktu ujian habis (auto-submit)" else "Ujian selesai dikumpulkan oleh murid"
-                )
-            } catch (_: Exception) {}
+            // Jika submit gagal karena koneksi terputus, pastikan progress tetap tersimpan di Signed Vault lokal
+            // agar bisa ditarik otomatis saat siswa login / membuka halaman ujian kembali!
+            val savedAt = getCurrentEpochMillis().coerceAtMost(effectiveDeadlineMillis)
+            val elapsed = (totalDurationSeconds - remainingSeconds).coerceAtLeast(0L)
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.saveSignedProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                ujianId = exam.ujianId,
+                studentId = studentId,
+                startedAtMillis = studentStartMillis,
+                lastSavedAtMillis = savedAt,
+                durationSeconds = elapsed,
+                studentAnswers = studentAnswers,
+                questions = questions
+            )
         } finally {
-            // Clean up exam persistence
-            storage.remove(startKey)
-            storage.remove(answersKey)
-            storage.remove(flaggedKey)
+            // Bersihkan vault lokal HANYA jika server berhasil menerima dan menilai submitResp
+            if (submitResp != null) {
+                com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(
+                    storage = storage,
+                    scheduleId = examKeyId,
+                    studentId = studentId
+                )
+            }
 
             isSubmitting = false
             submitResultData = submitResp
@@ -281,9 +312,11 @@ fun ExamTakingScreen(
     // Clear local storage if server reports exam was already finished (keep answers if only locked for reentry)
     LaunchedEffect(isAlreadyFinished) {
         if (isAlreadyFinished && !alreadyFinishedMessage.contains("Terkunci", ignoreCase = true) && !alreadyFinishedMessage.contains("LOCKED", ignoreCase = true)) {
-            storage.remove(startKey)
-            storage.remove(answersKey)
-            storage.remove(flaggedKey)
+            com.sch.sekolah_mobile_app.data.security.ExamLocalVault.clearExamProgress(
+                storage = storage,
+                scheduleId = examKeyId,
+                studentId = studentId
+            )
         }
     }
 

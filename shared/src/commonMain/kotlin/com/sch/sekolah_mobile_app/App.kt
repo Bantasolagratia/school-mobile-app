@@ -169,6 +169,46 @@ fun App() {
         val token = authRepository.getAccessToken()
         AppLifecycleObserver.onAppForeground(token)
         if (!token.isNullOrBlank() && screenState == ScreenState.MAIN) {
+            // Auto-pull & submit jawaban ujian lokal yang belum terkumpul saat siswa login / masuk Beranda
+            if (currentProfile?.isTeacher == false) {
+                launch {
+                    try {
+                        val studentKelas = currentProfile?.displayDetail ?: ""
+                        val studentId = currentProfile?.nis?.takeIf { it.isNotBlank() }
+                            ?: currentProfile?.username
+                            ?: ""
+                        if (studentKelas.isNotBlank() && studentId.isNotBlank()) {
+                            val exams = ujianRepository.getUpcomingExams(studentKelas)
+                            val (todayStr, nowTimeStr) = com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentWibDateTime()
+                            val syncedTitles = ujianRepository.syncPendingLocalExams(
+                                exams = exams,
+                                studentId = studentId
+                            ) { ex ->
+                                val tgl = ex.tanggal ?: ""
+                                val jamEnd = ex.jamSelesai ?: ""
+                                (todayStr.isNotEmpty() && tgl.isNotBlank() && tgl < todayStr) ||
+                                    (todayStr.isNotEmpty() && tgl == todayStr && nowTimeStr.isNotEmpty() && jamEnd.isNotBlank() && nowTimeStr > jamEnd)
+                            }
+                            if (syncedTitles.isNotEmpty()) {
+                                val syncMsg = "Jawaban lokal untuk ${syncedTitles.joinToString(", ")} berhasil disinkronisasi otomatis ke server."
+                                showSystemNotification(
+                                    id = "exam_autosync_${syncedTitles.hashCode()}",
+                                    title = "Jawaban Ujian Terkumpul Otomatis",
+                                    message = syncMsg
+                                )
+                                activePopupNotification = NotificationItemMobile(
+                                    id = "exam_autosync_${syncedTitles.hashCode()}",
+                                    title = "Jawaban Ujian Terkumpul Otomatis",
+                                    message = syncMsg,
+                                    category = "EXAM_SYNC",
+                                    isRead = false
+                                )
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+
             val userKey = currentProfile?.username ?: "default"
             val storageKey = "seen_notif_ids_$userKey"
             while (isActive) {
