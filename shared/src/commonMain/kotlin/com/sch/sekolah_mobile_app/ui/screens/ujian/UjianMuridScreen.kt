@@ -552,7 +552,7 @@ private fun ExamCardItem(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (statusBadge.contains("Selesai")) "Ujian Telah Berakhir" else "Terkunci (Belum Jam Mulai)",
+                        text = if (statusBadge.contains("Selesai") || statusBadge.contains("Berakhir") || statusBadge.contains("Habis")) "Ujian Telah Berakhir" else "Terkunci (Belum Jam Mulai)",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                         color = SlateGray
@@ -572,12 +572,6 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
     if (exam.studentStatus == "SELESAI") {
         return Triple(false, "Sudah Dikerjakan", Color(0xFF059669))
     }
-    if (exam.studentStatus == "TERKUNCI") {
-        return Triple(false, "Akses Terkunci", Color(0xFFDC2626))
-    }
-    if (exam.studentStatus == "BELUM_MENGUMPULKAN") {
-        return Triple(false, "Belum Mengumpulkan", Color(0xFFD97706))
-    }
 
     val isDianulir = exam.studentStatus == "DIANULIR"
     val tanggal = exam.tanggal ?: ""
@@ -588,23 +582,29 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
     return try {
         val (todayStr, nowTimeStr) = getCurrentWibDateTime()
 
-        if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal < todayStr) {
-            Triple(false, if (isDianulir) "Dianulir (Selesai)" else "Selesai", Color(0xFF6B7280))
+        val isExpired = (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal < todayStr) ||
+                (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal == todayStr && nowTimeStr.isNotEmpty() && jamSelesai.isNotBlank() && nowTimeStr > jamSelesai) ||
+                exam.studentStatus == "KEDALUWARSA"
+
+        if (isExpired) {
+            val badge = if (exam.studentStatus == "BELUM_MENGUMPULKAN") "Waktu Habis (Belum Mengumpulkan)"
+            else if (isDianulir) "Dianulir (Selesai)"
+            else "Ujian Telah Berakhir"
+            Triple(false, badge, Color(0xFF6B7280))
+        } else if (exam.studentStatus == "TERKUNCI") {
+            Triple(false, "Akses Terkunci", Color(0xFFDC2626))
+        } else if (exam.studentStatus == "BELUM_MENGUMPULKAN") {
+            Triple(false, "Belum Mengumpulkan", Color(0xFFD97706))
         } else if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal > todayStr) {
             Triple(false, if (isDianulir) "Ujian Ulang Mendatang" else "Mendatang", if (isDianulir) Color(0xFFD97706) else PrimaryTeal)
+        } else if (nowTimeStr.isNotEmpty() && jamMulai.isNotBlank() && nowTimeStr < jamMulai) {
+            Triple(false, "Mulai $jamMulai WIB", Color(0xFFD97706))
         } else {
-            // Hari ini
-            if (nowTimeStr.isNotEmpty() && jamMulai.isNotBlank() && nowTimeStr < jamMulai) {
-                Triple(false, "Mulai $jamMulai WIB", Color(0xFFD97706))
-            } else if (nowTimeStr.isNotEmpty() && jamSelesai.isNotBlank() && nowTimeStr > jamSelesai) {
-                Triple(false, if (isDianulir) "Dianulir (Selesai)" else "Selesai", Color(0xFF6B7280))
-            } else {
-                Triple(true, if (isDianulir) "Dianulir (Ujian Ulang)" else "Siap Dikerjakan", if (isDianulir) Color(0xFFD97706) else Color(0xFF059669))
-            }
+            Triple(true, if (isDianulir) "Dianulir (Ujian Ulang)" else "Siap Dikerjakan", if (isDianulir) Color(0xFFD97706) else Color(0xFF059669))
         }
     } catch (_: Exception) {
-        // Fallback jika error
-        Triple(true, if (isDianulir) "Dianulir (Ujian Ulang)" else "Aktif", if (isDianulir) Color(0xFFD97706) else Color(0xFF059669))
+        // Fallback aman jika error
+        Triple(false, "Ujian Telah Berakhir", Color(0xFF6B7280))
     }
 }
 
