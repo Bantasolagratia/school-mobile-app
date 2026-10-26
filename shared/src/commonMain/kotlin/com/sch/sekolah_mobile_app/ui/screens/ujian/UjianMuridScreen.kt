@@ -499,11 +499,11 @@ private fun ExamCardItem(
             // Tombol Mulai Ujian (Fasilitas 6.3)
             Button(
                 onClick = onStartExam,
-                enabled = canStart && !isSubmitted && !isLockedReentry && !isUnsubmitted,
+                enabled = canStart && !isSubmitted && !isUnsubmitted,
                 modifier = Modifier.fillMaxWidth().height(46.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isDianulir) Color(0xFFD97706) else PrimaryTeal,
+                    containerColor = if (isLockedReentry) Color(0xFFDC2626) else if (isDianulir) Color(0xFFD97706) else PrimaryTeal,
                     disabledContainerColor = if (isSubmitted) Color(0xFFD1FAE5) else if (isLockedReentry) Color(0xFFFEE2E2) else if (isUnsubmitted) Color(0xFFFEF3C7) else SurfaceVariantColor
                 )
             ) {
@@ -525,15 +525,15 @@ private fun ExamCardItem(
                     Icon(
                         Icons.Default.Lock,
                         contentDescription = null,
-                        tint = Color(0xFFDC2626),
+                        tint = if (canStart) Color.White else Color(0xFFDC2626),
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Akses Terkunci (Hubungi Pengawas)",
+                        text = "Akses Terkunci (Buka dengan Key Pengawas)",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFDC2626)
+                        color = if (canStart) Color.White else Color(0xFFDC2626)
                     )
                 } else if (isUnsubmitted) {
                     Icon(
@@ -624,7 +624,7 @@ private fun evaluateExamTiming(exam: ExamScheduleItem): Triple<Boolean, String, 
             else "Ujian Telah Berakhir"
             Triple(false, badge, Color(0xFF6B7280))
         } else if (exam.studentStatus == "TERKUNCI") {
-            Triple(false, "Akses Terkunci", Color(0xFFDC2626))
+            Triple(true, "Akses Terkunci", Color(0xFFDC2626))
         } else if (exam.studentStatus == "BELUM_MENGUMPULKAN") {
             Triple(false, "Belum Mengumpulkan", Color(0xFFD97706))
         } else if (todayStr.isNotEmpty() && tanggal.isNotBlank() && tanggal > todayStr) {
