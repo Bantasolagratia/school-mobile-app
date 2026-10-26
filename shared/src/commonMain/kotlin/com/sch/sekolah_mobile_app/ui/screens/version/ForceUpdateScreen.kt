@@ -162,9 +162,10 @@ fun ForceUpdateScreen(
                         // Button Update Sekarang
                         Button(
                             onClick = {
-                                if (payload.updateUrl.isNotBlank()) {
+                                val targetUrl = com.sch.sekolah_mobile_app.data.security.ApkUrlCryptoHelper.decryptApkUrl(payload.updateUrl)
+                                if (targetUrl.isNotBlank()) {
                                     try {
-                                        uriHandler.openUri(payload.updateUrl)
+                                        uriHandler.openUri(targetUrl)
                                     } catch (_: Exception) {}
                                 }
                             },
