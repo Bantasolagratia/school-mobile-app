@@ -320,6 +320,28 @@ fun ExamTakingScreen(
         }
     }
 
+    suspend fun loadExamQuestions() {
+        if (exam.ujianId == null) return
+        isLoadingQuestions = true
+        try {
+            val detail = ujianRepository.getUjianDetail(exam.ujianId)
+            examDetail = detail
+            if (detail.questions.isNotEmpty()) {
+                questions = detail.questions
+            } else if (questions.isEmpty()) {
+                questions = generateFallbackQuestions(exam)
+            }
+        } catch (e: Exception) {
+            println("[ExamTakingScreen] Failed to load exam detail: ${e.message}")
+            e.printStackTrace()
+            if (questions.isEmpty()) {
+                questions = generateFallbackQuestions(exam)
+            }
+        } finally {
+            isLoadingQuestions = false
+        }
+    }
+
     // Initial load: Fetch questions and lock session on server
     LaunchedEffect(exam.id) {
         // 1. Lock session on server (single hit exam-start, replaces periodic heartbeat)
@@ -333,8 +355,7 @@ fun ExamTakingScreen(
                     isAlreadyFinished = true
                     alreadyFinishedMessage = hb.message ?: "Anda telah menyelesaikan dan mengumpulkan ujian ini."
                 } else if (hb.action == "LOCKED_REENTRY") {
-                    isAlreadyFinished = true
-                    alreadyFinishedMessage = hb.message ?: "🔒 Akses Ujian Terkunci: Silakan hubungi Guru Pengawas untuk membuka kembali akses masuk ujian Anda."
+                    isSecurityLockedByViolation = true
                 } else if (hb.action == "KICK") {
                     isKickedBySupervisor = true
                     kickMessage = hb.message ?: "Sesi Anda telah di-reset oleh Guru Pengawas."
@@ -342,32 +363,16 @@ fun ExamTakingScreen(
             }
         } catch (e: Exception) {
             val msg = e.message ?: ""
-            if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true) || msg.contains("LOCKED_REENTRY", ignoreCase = true) || msg.contains("Akses Ujian Terkunci", ignoreCase = true)) {
+            if (msg.contains("LOCKED_REENTRY", ignoreCase = true) || msg.contains("Akses Ujian Terkunci", ignoreCase = true) || msg.contains("TERKUNCI", ignoreCase = true)) {
+                isSecurityLockedByViolation = true
+            } else if (msg.contains("menyelesaikan", ignoreCase = true) || msg.contains("ALREADY_FINISHED", ignoreCase = true)) {
                 isAlreadyFinished = true
                 alreadyFinishedMessage = msg
             }
         }
 
         // 2. Fetch exam questions
-        try {
-            if (exam.ujianId != null) {
-                val detail = ujianRepository.getUjianDetail(exam.ujianId)
-                examDetail = detail
-                if (detail.questions.isNotEmpty()) {
-                    questions = detail.questions
-                } else {
-                    questions = generateFallbackQuestions(exam)
-                }
-            } else {
-                questions = generateFallbackQuestions(exam)
-            }
-        } catch (e: Exception) {
-            println("[ExamTakingScreen] Failed to load exam detail: ${e.message}")
-            e.printStackTrace()
-            questions = generateFallbackQuestions(exam)
-        } finally {
-            isLoadingQuestions = false
-        }
+        loadExamQuestions()
 
         // 3. Fetch exam participant card (for supervisor inspection anytime during kiosk)
         try {
@@ -1109,15 +1114,14 @@ fun ExamTakingScreen(
                         OutlinedTextField(
                             value = emergencyKeyInput,
                             onValueChange = {
-                                if (it.length <= 6) {
-                                    emergencyKeyInput = it
-                                    emergencyKeyError = null
-                                }
+                                val digits = it.filter { ch -> ch.isDigit() }.take(6)
+                                emergencyKeyInput = digits
+                                emergencyKeyError = null
                             },
                             label = { Text("6 Digit Key Keluar") },
                             placeholder = { Text("849 203") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             textStyle = LocalTextStyle.current.copy(
                                 textAlign = TextAlign.Center,
                                 letterSpacing = 4.sp,
@@ -1879,7 +1883,7 @@ fun ExamTakingScreen(
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "1. Panggil Guru Pengawas untuk memasukkan Key Pengawas (6-digit) di bawah guna melepas kunci layar HP.\n2. Untuk dapat masuk dan mengikuti ujian kembali, Guru Pengawas harus membuka izin akses Anda pada tab 'Siswa Keluar / Terkunci' di Web Pengawas.",
+                            text = "Panggil Guru Pengawas untuk memasukkan Key Pengawas (6-digit) di bawah guna membuka kembali kunci ujian dan melanjutkan pengerjaan soal.",
                             fontSize = 12.sp,
                             color = SlateGray,
                             textAlign = TextAlign.Center,
@@ -1890,13 +1894,14 @@ fun ExamTakingScreen(
                         OutlinedTextField(
                             value = violationKeyInput,
                             onValueChange = {
-                                if (it.length <= 6) violationKeyInput = it
+                                val digits = it.filter { ch -> ch.isDigit() }.take(6)
+                                violationKeyInput = digits
                                 violationKeyError = null
                             },
                             label = { Text("Key Pengawas (6-digit)") },
                             placeholder = { Text("Contoh: 495713") },
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             isError = violationKeyError != null,
                             supportingText = violationKeyError?.let { { Text(it, color = Color(0xFFDC2626)) } },
                             modifier = Modifier.fillMaxWidth()
@@ -1904,38 +1909,77 @@ fun ExamTakingScreen(
                     }
                 },
                 confirmButton = {
-                    Button(
-                        onClick = {
-                            coroutineScope.launch {
-                                isVerifyingViolationKey = true
-                                violationKeyError = null
-                                try {
-                                    val resp = ujianRepository.verifyEmergencyExitKey(
-                                        scheduleId = exam.id ?: "",
-                                        kelas = studentKelas,
-                                        key = violationKeyInput.trim()
-                                    )
-                                    isVerifyingViolationKey = false
-                                    if (resp.valid) {
-                                        releaseExamKiosk()
-                                        onEmergencyExit()
-                                    } else {
-                                        violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
-                                    }
-                                } catch (e: Exception) {
-                                    isVerifyingViolationKey = false
-                                    violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
-                                }
-                            }
-                        },
-                        enabled = !isVerifyingViolationKey && violationKeyInput.trim().isNotEmpty(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
-                        modifier = Modifier.fillMaxWidth()
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (isVerifyingViolationKey) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text("Buka Kunci Layar & Keluar")
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isVerifyingViolationKey = true
+                                    violationKeyError = null
+                                    try {
+                                        val resp = ujianRepository.verifyEmergencyExitKey(
+                                            scheduleId = exam.id ?: "",
+                                            kelas = studentKelas,
+                                            key = violationKeyInput.trim()
+                                        )
+                                        isVerifyingViolationKey = false
+                                        if (resp.valid) {
+                                            isSecurityLockedByViolation = false
+                                            showViolationDialog = false
+                                            violationKeyInput = ""
+                                            loadExamQuestions()
+                                        } else {
+                                            violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
+                                        }
+                                    } catch (e: Exception) {
+                                        isVerifyingViolationKey = false
+                                        violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
+                                    }
+                                }
+                            },
+                            enabled = !isVerifyingViolationKey && violationKeyInput.trim().length == 6,
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isVerifyingViolationKey) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text("Buka Kunci & Lanjutkan Ujian", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    isVerifyingViolationKey = true
+                                    violationKeyError = null
+                                    try {
+                                        val resp = ujianRepository.verifyEmergencyExitKey(
+                                            scheduleId = exam.id ?: "",
+                                            kelas = studentKelas,
+                                            key = violationKeyInput.trim()
+                                        )
+                                        isVerifyingViolationKey = false
+                                        if (resp.valid) {
+                                            releaseExamKiosk()
+                                            onEmergencyExit()
+                                        } else {
+                                            violationKeyError = resp.message ?: "Key Pengawas salah atau tidak valid."
+                                        }
+                                    } catch (e: Exception) {
+                                        isVerifyingViolationKey = false
+                                        violationKeyError = e.message ?: "Gagal memverifikasi Key Pengawas."
+                                    }
+                                }
+                            },
+                            enabled = !isVerifyingViolationKey && violationKeyInput.trim().length == 6,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                            border = BorderStroke(1.dp, Color(0xFFFCA5A5)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Buka Kunci & Keluar Ujian", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
