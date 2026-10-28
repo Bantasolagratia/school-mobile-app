@@ -168,11 +168,28 @@ fun App() {
     var activePopupNotification by remember { mutableStateOf<NotificationItemMobile?>(null) }
     var lastBackPressTime by remember { mutableStateOf(0L) }
     val platformStorage = remember { getPlatformStorage() }
+    var showOptionalUpdateDialog by remember { mutableStateOf(false) }
+
+    // Evaluasi apakah pop-up pembaruan opsional perlu ditampilkan
+    LaunchedEffect(versionCheckResult) {
+        if (versionCheckResult is VersionCheckResult.UpdateOptional) {
+            val payload = (versionCheckResult as VersionCheckResult.UpdateOptional).payload
+            val dismissedCode = platformStorage.getString("dismissed_update_version_code", "0")?.toLongOrNull() ?: 0L
+            if (payload.latestVersionCode > dismissedCode) {
+                showOptionalUpdateDialog = true
+            } else {
+                showOptionalUpdateDialog = false
+            }
+        } else {
+            showOptionalUpdateDialog = false
+        }
+    }
 
     // Intersepsi tombol Back fisik / gesture bawaan Android untuk navigasi berjenjang yang aman
     val isBackHandlerEnabled = screenState != ScreenState.EXAM_TAKING &&
             versionCheckResult !is VersionCheckResult.ForceUpdateRequired &&
-            versionCheckResult !is VersionCheckResult.TamperingDetected
+            versionCheckResult !is VersionCheckResult.TamperingDetected &&
+            !showOptionalUpdateDialog
     AppBackHandler(enabled = isBackHandlerEnabled) {
         when {
             // 1. Sedang membuka Detail Materi -> Kembali ke List Materi Mapel
@@ -339,6 +356,7 @@ fun App() {
                 ForceUpdateScreen(
                     payload = vResult.payload,
                     tamperReason = null,
+                    isMandatory = true,
                     onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
                 )
             }
@@ -346,6 +364,7 @@ fun App() {
                 ForceUpdateScreen(
                     payload = null,
                     tamperReason = vResult.reason,
+                    isMandatory = true,
                     onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
                 )
             }
@@ -857,6 +876,26 @@ fun App() {
                         }
                     }
                 }
+            }
+
+            // Pop-up Pembaruan Opsional (muncul jika versi app < versi server terbaru dan bukan mandatory)
+            if (showOptionalUpdateDialog && versionCheckResult is VersionCheckResult.UpdateOptional) {
+                val optionalPayload = (versionCheckResult as VersionCheckResult.UpdateOptional).payload
+                ForceUpdateScreen(
+                    payload = optionalPayload,
+                    tamperReason = null,
+                    isMandatory = false,
+                    onDismiss = { dontShowAgain ->
+                        if (dontShowAgain) {
+                            platformStorage.setString(
+                                "dismissed_update_version_code",
+                                optionalPayload.latestVersionCode.toString()
+                            )
+                        }
+                        showOptionalUpdateDialog = false
+                    },
+                    onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
+                )
             }
                 }
                 }

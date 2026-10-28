@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,11 +43,19 @@ sealed class ApkDownloadState {
 fun ForceUpdateScreen(
     payload: DecryptedAppVersionPayload? = null,
     tamperReason: String? = null,
+    isMandatory: Boolean = true,
+    onDismiss: ((dontShowAgain: Boolean) -> Unit)? = null,
     onRetry: () -> Unit
 ) {
-    // Intersep tombol back hardware agar tidak bisa keluar atau bypass
+    var dontShowAgain by remember { mutableStateOf(false) }
+
+    // Intersep tombol back hardware:
+    // Jika mandatory, back diblokir total.
+    // Jika optional (!isMandatory), back akan menutup dialog sesuai status dontShowAgain.
     ExamBackHandler(enabled = true) {
-        // Blokir navigasi kembali saat layar force update aktif
+        if (!isMandatory) {
+            onDismiss?.invoke(dontShowAgain)
+        }
     }
 
     val uriHandler = LocalUriHandler.current
@@ -59,24 +70,56 @@ fun ForceUpdateScreen(
         return "$mb MB"
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = LightBackground
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                if (isMandatory) LightBackground else Color.Black.copy(alpha = 0.65f)
+            )
+            .then(
+                if (!isMandatory) {
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        onDismiss?.invoke(dontShowAgain)
+                    }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { /* Mencegah klik di dalam card menutup modal */ },
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            elevation = CardDefaults.cardElevation(defaultElevation = if (isMandatory) 8.dp else 12.dp),
+            shape = RoundedCornerShape(24.dp)
         ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-                colors = CardDefaults.cardColors(containerColor = CardSurface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(24.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                // Tombol Tutup 'X' di pojok kanan atas (hanya untuk update opsional)
+                if (!isMandatory) {
+                    IconButton(
+                        onClick = { onDismiss?.invoke(dontShowAgain) },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Tutup",
+                            tint = SlateGray
+                        )
+                    }
+                }
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -105,7 +148,7 @@ fun ForceUpdateScreen(
                                 downloadState is ApkDownloadState.Downloading -> Icons.Default.Download
                                 else -> Icons.Default.SystemUpdate
                             },
-                            contentDescription = if (isTampered) "Security Warning" else "Update Required",
+                            contentDescription = if (isTampered) "Security Warning" else if (isMandatory) "Update Required" else "Update Available",
                             modifier = Modifier.size(40.dp),
                             tint = when {
                                 isTampered -> ErrorRed
@@ -119,7 +162,11 @@ fun ForceUpdateScreen(
 
                     // Title
                     Text(
-                        text = if (isTampered) "Peringatan Integritas Aplikasi" else (payload?.title ?: "Pembaruan Aplikasi Diperlukan"),
+                        text = if (isTampered) {
+                            "Peringatan Integritas Aplikasi"
+                        } else {
+                            payload?.title ?: if (isMandatory) "Pembaruan Aplikasi Diperlukan" else "Pembaruan Aplikasi Tersedia"
+                        },
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
                             color = if (isTampered) ErrorRed else DarkNavy
@@ -134,7 +181,11 @@ fun ForceUpdateScreen(
                         text = if (isTampered) {
                             tamperReason ?: "Terdeteksi manipulasi data atau respons server tidak dapat diverifikasi keasliannya. Demi keamanan data Anda, aplikasi diblokir sementara."
                         } else {
-                            payload?.message ?: "Versi aplikasi Anda saat ini sudah tidak didukung oleh sistem. Harap perbarui ke versi terbaru untuk melanjutkan."
+                            payload?.message ?: if (isMandatory) {
+                                "Versi aplikasi Anda saat ini sudah tidak didukung oleh sistem. Harap perbarui ke versi terbaru untuk melanjutkan."
+                            } else {
+                                "Versi terbaru aplikasi telah tersedia. Silakan lakukan pembaruan untuk menikmati fitur dan peningkatan performa terbaru."
+                            }
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = SlateGray,
@@ -204,7 +255,6 @@ fun ForceUpdateScreen(
                         fun startInAppDownload() {
                             val downloadDir = PlatformAppInstaller.getDownloadDirectory()
                             if (downloadDir.isBlank()) {
-                                // Fallback jika direktori tidak tersedia
                                 if (decryptedUrl.isNotBlank()) {
                                     try { uriHandler.openUri(decryptedUrl) } catch (_: Exception) {}
                                 }
@@ -242,7 +292,6 @@ fun ForceUpdateScreen(
                                 Button(
                                     onClick = {
                                         if (isFolder) {
-                                            // Tautan berupa folder Google Drive, arahkan langsung ke browser/Drive app
                                             if (decryptedUrl.isNotBlank()) {
                                                 try { uriHandler.openUri(decryptedUrl) } catch (_: Exception) {}
                                             }
@@ -269,6 +318,55 @@ fun ForceUpdateScreen(
                                             fontSize = 15.sp
                                         )
                                     )
+                                }
+
+                                if (!isMandatory) {
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    // Checkbox: Jangan tampilkan ini lagi
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .clickable { dontShowAgain = !dontShowAgain }
+                                            .padding(vertical = 4.dp, horizontal = 2.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            checked = dontShowAgain,
+                                            onCheckedChange = { dontShowAgain = it },
+                                            colors = CheckboxDefaults.colors(
+                                                checkedColor = PrimaryTeal,
+                                                checkmarkColor = CardSurface
+                                            )
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Jangan tampilkan ini lagi",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = SlateGray,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    OutlinedButton(
+                                        onClick = { onDismiss?.invoke(dontShowAgain) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(46.dp),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = "Nanti Saja",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                color = SlateGray,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        )
+                                    }
                                 }
                             }
 
@@ -442,33 +540,47 @@ fun ForceUpdateScreen(
                                             }
                                         }
                                     }
+                                    if (!isMandatory) {
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        TextButton(
+                                            onClick = { onDismiss?.invoke(dontShowAgain) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = "Tutup",
+                                                style = MaterialTheme.typography.labelMedium.copy(color = SlateGray)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    if (isMandatory) {
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // Button Coba Lagi / Verifikasi Ulang
-                    OutlinedButton(
-                        onClick = onRetry,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = SlateGray
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Periksa Kembali",
-                            color = SlateGray,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
-                        )
+                        // Button Coba Lagi / Verifikasi Ulang (khusus mandatory)
+                        OutlinedButton(
+                            onClick = onRetry,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = SlateGray
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Periksa Kembali",
+                                color = SlateGray,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium)
+                            )
+                        }
                     }
                 }
             }
