@@ -1,16 +1,16 @@
 package com.sch.sekolah_mobile_app.ui.screens.version
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,9 +20,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sch.sekolah_mobile_app.data.model.DecryptedAppVersionPayload
+import com.sch.sekolah_mobile_app.data.security.ApkUrlCryptoHelper
+import com.sch.sekolah_mobile_app.data.security.PlatformApkDownloader
 import com.sch.sekolah_mobile_app.data.security.PlatformAppInfo
+import com.sch.sekolah_mobile_app.data.security.PlatformAppInstaller
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamBackHandler
 import com.sch.sekolah_mobile_app.ui.theme.*
+import kotlinx.coroutines.launch
+
+sealed class ApkDownloadState {
+    object Idle : ApkDownloadState()
+    data class Downloading(val progress: Float, val downloadedBytes: Long, val totalBytes: Long) : ApkDownloadState()
+    data class Success(val apkPath: String) : ApkDownloadState()
+    data class Error(val message: String) : ApkDownloadState()
+    data class NeedsPermission(val apkPath: String) : ApkDownloadState()
+}
 
 @Composable
 fun ForceUpdateScreen(
@@ -36,7 +48,16 @@ fun ForceUpdateScreen(
     }
 
     val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
     val isTampered = !tamperReason.isNullOrBlank()
+
+    var downloadState by remember { mutableStateOf<ApkDownloadState>(ApkDownloadState.Idle) }
+
+    fun formatBytesToMB(bytes: Long): String {
+        if (bytes <= 0L) return "0 MB"
+        val mb = ((bytes.toDouble() / (1024.0 * 1024.0)) * 10.0).toLong() / 10.0
+        return "$mb MB"
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -68,14 +89,29 @@ fun ForceUpdateScreen(
                         modifier = Modifier
                             .size(76.dp)
                             .clip(CircleShape)
-                            .background(if (isTampered) ErrorRed.copy(alpha = 0.12f) else PrimaryTealContainer),
+                            .background(
+                                when {
+                                    isTampered -> ErrorRed.copy(alpha = 0.12f)
+                                    downloadState is ApkDownloadState.Success -> SuccessGreenContainer
+                                    else -> PrimaryTealContainer
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isTampered) Icons.Default.Security else Icons.Default.SystemUpdate,
+                            imageVector = when {
+                                isTampered -> Icons.Default.Security
+                                downloadState is ApkDownloadState.Success -> Icons.Default.CheckCircle
+                                downloadState is ApkDownloadState.Downloading -> Icons.Default.Download
+                                else -> Icons.Default.SystemUpdate
+                            },
                             contentDescription = if (isTampered) "Security Warning" else "Update Required",
                             modifier = Modifier.size(40.dp),
-                            tint = if (isTampered) ErrorRed else PrimaryTeal
+                            tint = when {
+                                isTampered -> ErrorRed
+                                downloadState is ApkDownloadState.Success -> SuccessGreen
+                                else -> PrimaryTeal
+                            }
                         )
                     }
 
@@ -159,35 +195,255 @@ fun ForceUpdateScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Button Update Sekarang
-                        Button(
-                            onClick = {
-                                val targetUrl = com.sch.sekolah_mobile_app.data.security.ApkUrlCryptoHelper.decryptApkUrl(payload.updateUrl)
-                                if (targetUrl.isNotBlank()) {
-                                    try {
-                                        uriHandler.openUri(targetUrl)
-                                    } catch (_: Exception) {}
+                        val rawUrl = payload.updateUrl
+                        val decryptedUrl = remember(rawUrl) { ApkUrlCryptoHelper.decryptApkUrl(rawUrl) }
+                        val isFolder = remember(decryptedUrl) { ApkUrlCryptoHelper.isGoogleDriveFolder(decryptedUrl) }
+                        val directDownloadUrl = remember(decryptedUrl) { ApkUrlCryptoHelper.resolveDirectDownloadUrl(decryptedUrl) }
+
+                        // Function to start in-app download
+                        fun startInAppDownload() {
+                            val downloadDir = PlatformAppInstaller.getDownloadDirectory()
+                            if (downloadDir.isBlank()) {
+                                // Fallback jika direktori tidak tersedia
+                                if (decryptedUrl.isNotBlank()) {
+                                    try { uriHandler.openUri(decryptedUrl) } catch (_: Exception) {}
                                 }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.SystemUpdate,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Perbarui Sekarang",
-                                style = MaterialTheme.typography.labelLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
+                                return
+                            }
+
+                            val apkDestination = "$downloadDir/update_v${payload.latestVersionCode}.apk"
+                            downloadState = ApkDownloadState.Downloading(0f, 0L, -1L)
+
+                            coroutineScope.launch {
+                                val success = PlatformApkDownloader.download(
+                                    url = directDownloadUrl,
+                                    destinationPath = apkDestination,
+                                    onProgress = { progress, downloaded, total ->
+                                        downloadState = ApkDownloadState.Downloading(progress, downloaded, total)
+                                    }
                                 )
-                            )
+
+                                if (success) {
+                                    if (!PlatformAppInstaller.canInstallPackages()) {
+                                        downloadState = ApkDownloadState.NeedsPermission(apkDestination)
+                                    } else {
+                                        downloadState = ApkDownloadState.Success(apkDestination)
+                                        PlatformAppInstaller.installApk(apkDestination)
+                                    }
+                                } else {
+                                    downloadState = ApkDownloadState.Error("Gagal mengunduh pembaruan. Silakan periksa koneksi internet atau gunakan opsi browser.")
+                                }
+                            }
+                        }
+
+                        // UI berdasarkan state unduhan
+                        when (val state = downloadState) {
+                            is ApkDownloadState.Idle -> {
+                                Button(
+                                    onClick = {
+                                        if (isFolder) {
+                                            // Tautan berupa folder Google Drive, arahkan langsung ke browser/Drive app
+                                            if (decryptedUrl.isNotBlank()) {
+                                                try { uriHandler.openUri(decryptedUrl) } catch (_: Exception) {}
+                                            }
+                                        } else {
+                                            startInAppDownload()
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(50.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SystemUpdate,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Perbarui Sekarang",
+                                        style = MaterialTheme.typography.labelLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp
+                                        )
+                                    )
+                                }
+                            }
+
+                            is ApkDownloadState.Downloading -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    if (state.progress >= 0f) {
+                                        LinearProgressIndicator(
+                                            progress = { state.progress },
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(10.dp)
+                                                .clip(RoundedCornerShape(5.dp)),
+                                            color = PrimaryTeal,
+                                            trackColor = SurfaceVariantColor
+                                        )
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        val percent = (state.progress * 100).toInt()
+                                        val downloadedStr = formatBytesToMB(state.downloadedBytes)
+                                        val totalStr = if (state.totalBytes > 0) formatBytesToMB(state.totalBytes) else "..."
+                                        Text(
+                                            text = "Mengunduh pembaruan: $percent% ($downloadedStr / $totalStr)",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                            color = SlateGray
+                                        )
+                                    } else {
+                                        LinearProgressIndicator(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(10.dp)
+                                                .clip(RoundedCornerShape(5.dp)),
+                                            color = PrimaryTeal,
+                                            trackColor = SurfaceVariantColor
+                                        )
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        val downloadedStr = formatBytesToMB(state.downloadedBytes)
+                                        Text(
+                                            text = "Mengunduh: $downloadedStr...",
+                                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                            color = SlateGray
+                                        )
+                                    }
+                                }
+                            }
+
+                            is ApkDownloadState.NeedsPermission -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Izin Diperlukan",
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = DarkNavy
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Aktifkan izin 'Pasang aplikasi tidak dikenal' untuk aplikasi ini agar dapat menyelesaikan pembaruan.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SlateGray,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(14.dp))
+                                    Button(
+                                        onClick = {
+                                            PlatformAppInstaller.openInstallPermissionSettings()
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(48.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Buka Pengaturan Izin",
+                                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    OutlinedButton(
+                                        onClick = {
+                                            PlatformAppInstaller.installApk(state.apkPath)
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(44.dp),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Text(
+                                            text = "Saya Sudah Mengizinkan, Pasang",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
+                                        )
+                                    }
+                                }
+                            }
+
+                            is ApkDownloadState.Success -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            PlatformAppInstaller.installApk(state.apkPath)
+                                        },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(50.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                                        shape = RoundedCornerShape(14.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Pasang Pembaruan",
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            is ApkDownloadState.Error -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = state.message,
+                                        style = MaterialTheme.typography.bodySmall.copy(color = ErrorRed),
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(modifier = Modifier.fillMaxWidth()) {
+                                        Button(
+                                            onClick = { startInAppDownload() },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(46.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text("Coba Lagi", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                                        }
+                                        if (decryptedUrl.isNotBlank()) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            OutlinedButton(
+                                                onClick = {
+                                                    try { uriHandler.openUri(decryptedUrl) } catch (_: Exception) {}
+                                                },
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(46.dp),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Text("Buka Browser", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 

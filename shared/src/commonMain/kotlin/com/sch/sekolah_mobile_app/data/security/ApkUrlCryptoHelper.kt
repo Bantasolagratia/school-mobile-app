@@ -30,5 +30,43 @@ object ApkUrlCryptoHelper {
             trimmed
         }
     }
+
+    /**
+     * Memeriksa apakah URL merupakan tautan folder Google Drive (bukan file langsung).
+     */
+    fun isGoogleDriveFolder(url: String): Boolean {
+        return url.contains("/drive/folders/", ignoreCase = true)
+    }
+
+    /**
+     * Mengonversi URL publik Google Drive file menjadi direct download stream URL.
+     * Contoh:
+     * - https://drive.google.com/file/d/1ABCXYZ/view?usp=sharing
+     *   -> https://drive.google.com/uc?export=download&id=1ABCXYZ
+     */
+    fun resolveDirectDownloadUrl(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        if (trimmed.isBlank()) return ""
+
+        if (trimmed.contains("drive.google.com", ignoreCase = true)) {
+            // Cek format /file/d/FILE_ID
+            val fileIdRegex = Regex("""/file/d/([a-zA-Z0-9_-]+)""")
+            val fileIdMatch = fileIdRegex.find(trimmed)
+            if (fileIdMatch != null) {
+                val fileId = fileIdMatch.groupValues[1]
+                return "https://drive.google.com/uc?export=download&id=$fileId"
+            }
+
+            // Cek format ?id=FILE_ID
+            val queryIdRegex = Regex("""[?&]id=([a-zA-Z0-9_-]+)""")
+            val queryIdMatch = queryIdRegex.find(trimmed)
+            if (queryIdMatch != null) {
+                val fileId = queryIdMatch.groupValues[1]
+                return "https://drive.google.com/uc?export=download&id=$fileId"
+            }
+        }
+
+        return trimmed
+    }
 }
 

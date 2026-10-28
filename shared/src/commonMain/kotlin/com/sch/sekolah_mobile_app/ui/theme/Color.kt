@@ -21,4 +21,6 @@ val SurfaceVariantColor = Color(0xFFF1F5F9)
 val BorderStrokeColor = Color(0xFFE2E8F0)
 val BorderHairline = Color(0x1F0F172A)
 val ErrorRed = Color(0xFFDC2626)
+val SuccessGreen = Color(0xFF16A34A)
+val SuccessGreenContainer = Color(0xFFDCFCE7)
 
