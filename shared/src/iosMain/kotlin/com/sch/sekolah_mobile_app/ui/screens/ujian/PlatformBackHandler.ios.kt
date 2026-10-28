@@ -7,3 +7,8 @@ actual fun ExamBackHandler(enabled: Boolean, onBack: () -> Unit) {
     // iOS has no hardware back button
 }
 
+@Composable
+actual fun AppBackHandler(enabled: Boolean, onBack: () -> Unit) {
+    // iOS has no hardware back button
+}
+

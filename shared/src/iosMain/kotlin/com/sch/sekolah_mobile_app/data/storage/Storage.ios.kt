@@ -61,3 +61,11 @@ actual fun showSystemNotification(id: String, title: String, message: String) {
     }
 }
 
+actual fun showPlatformToast(message: String) {
+    // iOS does not use Android toasts
+}
+
+actual fun exitPlatformApp() {
+    // iOS HIG does not permit programmatic app exit
+}
+
