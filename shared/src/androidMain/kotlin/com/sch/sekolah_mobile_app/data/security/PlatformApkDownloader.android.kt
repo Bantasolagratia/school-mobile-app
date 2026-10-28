@@ -101,9 +101,14 @@ actual object PlatformApkDownloader {
             inputStream.close()
             inputStream = null
 
-            // Validasi file hasil unduhan tidak kosong
-            if (tempFile.exists() && tempFile.length() > 1024L) {
-                if (tempFile.renameTo(targetFile)) {
+            // Validasi file hasil unduhan: tidak kosong dan memiliki magic bytes Zip/APK (PK\x03\x04)
+            if (tempFile.exists() && tempFile.length() > 50_000L) {
+                val isZip = java.io.FileInputStream(tempFile).use { fis ->
+                    val header = ByteArray(4)
+                    val readCount = fis.read(header)
+                    readCount == 4 && header[0] == 0x50.toByte() && header[1] == 0x4B.toByte()
+                }
+                if (isZip && tempFile.renameTo(targetFile)) {
                     onProgress(1f, downloadedBytes, downloadedBytes)
                     return@withContext true
                 }

@@ -48,13 +48,13 @@ object ApkUrlCryptoHelper {
         val trimmed = rawUrl.trim()
         if (trimmed.isBlank()) return ""
 
-        if (trimmed.contains("drive.google.com", ignoreCase = true)) {
+        if (trimmed.contains("drive.google.com", ignoreCase = true) || trimmed.contains("drive.usercontent.google.com", ignoreCase = true)) {
             // Cek format /file/d/FILE_ID
             val fileIdRegex = Regex("""/file/d/([a-zA-Z0-9_-]+)""")
             val fileIdMatch = fileIdRegex.find(trimmed)
             if (fileIdMatch != null) {
                 val fileId = fileIdMatch.groupValues[1]
-                return "https://drive.google.com/uc?export=download&id=$fileId"
+                return "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=t"
             }
 
             // Cek format ?id=FILE_ID
@@ -62,7 +62,7 @@ object ApkUrlCryptoHelper {
             val queryIdMatch = queryIdRegex.find(trimmed)
             if (queryIdMatch != null) {
                 val fileId = queryIdMatch.groupValues[1]
-                return "https://drive.google.com/uc?export=download&id=$fileId"
+                return "https://drive.usercontent.google.com/download?id=$fileId&export=download&confirm=t"
             }
         }
 
