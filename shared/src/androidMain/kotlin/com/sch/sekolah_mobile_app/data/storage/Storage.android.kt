@@ -121,3 +121,16 @@ actual fun showSystemNotification(id: String, title: String, message: String) {
     }
 }
 
+actual fun showPlatformToast(message: String) {
+    try {
+        val ctx = AndroidPlatformContext.getActivity() ?: AndroidPlatformContext.get()
+        android.widget.Toast.makeText(ctx, message, android.widget.Toast.LENGTH_SHORT).show()
+    } catch (_: Exception) {}
+}
+
+actual fun exitPlatformApp() {
+    try {
+        AndroidPlatformContext.getActivity()?.finish()
+    } catch (_: Exception) {}
+}
+

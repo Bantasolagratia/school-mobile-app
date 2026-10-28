@@ -11,4 +11,6 @@ expect fun getPlatformStorage(): PlatformStorage
 expect fun getDefaultServerHost(): String
 expect fun copyToClipboard(label: String, text: String)
 expect fun showSystemNotification(id: String, title: String, message: String)
+expect fun showPlatformToast(message: String)
+expect fun exitPlatformApp()
 

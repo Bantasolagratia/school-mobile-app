@@ -49,6 +49,8 @@ import com.sch.sekolah_mobile_app.data.repository.RemoteConfigManager
 import com.sch.sekolah_mobile_app.data.repository.UjianRepository
 import com.sch.sekolah_mobile_app.data.storage.getPlatformStorage
 import com.sch.sekolah_mobile_app.data.storage.showSystemNotification
+import com.sch.sekolah_mobile_app.data.storage.showPlatformToast
+import com.sch.sekolah_mobile_app.data.storage.exitPlatformApp
 import com.sch.sekolah_mobile_app.ui.screens.activation.ActivationScreen
 import com.sch.sekolah_mobile_app.ui.screens.calendar.CalendarScreen
 import com.sch.sekolah_mobile_app.ui.screens.guru.GuruModuleScreen
@@ -67,9 +69,11 @@ import com.sch.sekolah_mobile_app.ui.screens.notifications.NotificationsScreen
 import com.sch.sekolah_mobile_app.ui.screens.profile.ProfileScreen
 import com.sch.sekolah_mobile_app.ui.screens.raport.RaportScreen
 import com.sch.sekolah_mobile_app.ui.screens.register.RegisterScreen
+import com.sch.sekolah_mobile_app.ui.screens.ujian.AppBackHandler
 import com.sch.sekolah_mobile_app.ui.screens.ujian.ExamTakingScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.StudentExamHistoryScreen
 import com.sch.sekolah_mobile_app.ui.screens.ujian.UjianMuridScreen
+import com.sch.sekolah_mobile_app.ui.screens.ujian.getCurrentEpochMillis
 import com.sch.sekolah_mobile_app.ui.screens.version.ForceUpdateScreen
 import com.sch.sekolah_mobile_app.ui.theme.BorderStrokeColor
 import com.sch.sekolah_mobile_app.ui.theme.CardSurface
@@ -162,7 +166,73 @@ fun App() {
     var kioskReturnSubScreen by remember { mutableStateOf(SubScreen.NONE) }
     var unreadNotifCount by remember { mutableStateOf(0L) }
     var activePopupNotification by remember { mutableStateOf<NotificationItemMobile?>(null) }
+    var lastBackPressTime by remember { mutableStateOf(0L) }
     val platformStorage = remember { getPlatformStorage() }
+    var showOptionalUpdateDialog by remember { mutableStateOf(false) }
+
+    // Evaluasi apakah pop-up pembaruan opsional perlu ditampilkan
+    LaunchedEffect(versionCheckResult) {
+        if (versionCheckResult is VersionCheckResult.UpdateOptional) {
+            val payload = (versionCheckResult as VersionCheckResult.UpdateOptional).payload
+            val dismissedCode = platformStorage.getString("dismissed_update_version_code", "0")?.toLongOrNull() ?: 0L
+            if (payload.latestVersionCode > dismissedCode) {
+                showOptionalUpdateDialog = true
+            } else {
+                showOptionalUpdateDialog = false
+            }
+        } else {
+            showOptionalUpdateDialog = false
+        }
+    }
+
+    // Intersepsi tombol Back fisik / gesture bawaan Android untuk navigasi berjenjang yang aman
+    val isBackHandlerEnabled = screenState != ScreenState.EXAM_TAKING &&
+            versionCheckResult !is VersionCheckResult.ForceUpdateRequired &&
+            versionCheckResult !is VersionCheckResult.TamperingDetected &&
+            !showOptionalUpdateDialog
+    AppBackHandler(enabled = isBackHandlerEnabled) {
+        when {
+            // 1. Sedang membuka Detail Materi -> Kembali ke List Materi Mapel
+            currentSubScreen == SubScreen.MATERI_DETAIL -> {
+                currentSubScreen = SubScreen.MATERI_LIST
+            }
+            // 2. Sedang membuka List Materi Mapel -> Kembali ke Daftar Mapel Siswa
+            currentSubScreen == SubScreen.MATERI_LIST -> {
+                currentSubScreen = SubScreen.MAPEL_STUDENT
+            }
+            // 3. Sedang membuat/melihat Surat Izin -> Kembali ke List Izin
+            currentSubScreen == SubScreen.IZIN_CREATE || currentSubScreen == SubScreen.IZIN_DETAIL -> {
+                currentSubScreen = SubScreen.IZIN_LIST
+            }
+            // 4. Kiosk Guru -> Kembali ke subscreen pemanggil atau Beranda
+            currentSubScreen == SubScreen.TEACHER_QR_KIOSK -> {
+                currentSubScreen = if (kioskReturnSubScreen != SubScreen.NONE) kioskReturnSubScreen else SubScreen.NONE
+                kioskReturnSubScreen = SubScreen.NONE
+            }
+            // 5. Sedang di SubScreen apa pun (Ujian, Rapor, Kalender, Notifikasi, dll) -> Kembali ke Beranda
+            currentSubScreen != SubScreen.NONE -> {
+                currentSubScreen = SubScreen.NONE
+            }
+            // 6. Sedang di Tab selain HOME pada ScreenState.MAIN -> Kembali ke Tab Beranda
+            screenState == ScreenState.MAIN && currentTab != NavigationTab.HOME -> {
+                currentTab = NavigationTab.HOME
+            }
+            // 7. Sedang di Halaman Registrasi / Aktivasi Akun -> Kembali ke Layar Login
+            screenState == ScreenState.REGISTER || screenState == ScreenState.ACTIVATION -> {
+                screenState = ScreenState.LOGIN
+            }
+            // 8. Berada di Root (Beranda Utama atau Login) -> Konfirmasi double back untuk keluar
+            else -> {
+                val now = getCurrentEpochMillis()
+                if (now - lastBackPressTime < 2000L) {
+                    exitPlatformApp()
+                } else {
+                    lastBackPressTime = now
+                    showPlatformToast("Tekan sekali lagi untuk keluar")
+                }
+            }
+        }
+    }
 
     // Sync remote config, SSE, dan polling real-time notifikasi pop-up saat user terautentikasi
     LaunchedEffect(screenState, currentProfile?.username) {
@@ -286,6 +356,7 @@ fun App() {
                 ForceUpdateScreen(
                     payload = vResult.payload,
                     tamperReason = null,
+                    isMandatory = true,
                     onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
                 )
             }
@@ -293,6 +364,7 @@ fun App() {
                 ForceUpdateScreen(
                     payload = null,
                     tamperReason = vResult.reason,
+                    isMandatory = true,
                     onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
                 )
             }
@@ -804,6 +876,26 @@ fun App() {
                         }
                     }
                 }
+            }
+
+            // Pop-up Pembaruan Opsional (muncul jika versi app < versi server terbaru dan bukan mandatory)
+            if (showOptionalUpdateDialog && versionCheckResult is VersionCheckResult.UpdateOptional) {
+                val optionalPayload = (versionCheckResult as VersionCheckResult.UpdateOptional).payload
+                ForceUpdateScreen(
+                    payload = optionalPayload,
+                    tamperReason = null,
+                    isMandatory = false,
+                    onDismiss = { dontShowAgain ->
+                        if (dontShowAgain) {
+                            platformStorage.setString(
+                                "dismissed_update_version_code",
+                                optionalPayload.latestVersionCode.toString()
+                            )
+                        }
+                        showOptionalUpdateDialog = false
+                    },
+                    onRetry = { AppVersionGuardManager.instance.checkAppVersion() }
+                )
             }
                 }
                 }
